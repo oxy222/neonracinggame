@@ -43,7 +43,7 @@ async function preloadMods() {
     const promises = [];
     
     types.forEach(type => {
-        for(let i=1; i<=10; i++) {
+        for(let i=1; i<=20; i++) {
             const fileName = `${type}${i}.js`;
             promises.push(
                 fetch(`addons/${fileName}`)
