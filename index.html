@@ -193,6 +193,12 @@
     }
     .menu-item.selected { background: var(--switch-red); color: #fff; transform: scale(1.05); }
 
+    .cc-display {
+        position: absolute; top: 30px; left: 40px; font-size: 2.5rem; font-weight: 900; 
+        color: #fff; text-shadow: 0 0 15px #0ff; font-style: italic; z-index: 100; display: none;
+    }
+    .cc-display.active { display: block; }
+
 </style>
 </head>
 <body>
@@ -208,6 +214,7 @@
 </div>
 
 <div id="ui-layer">
+    <div id="cc-display" class="cc-display">100CC</div>
     <!-- Main Menu -->
     <div id="screen-menu" class="screen active">
         <a href="https://instagram.com/skyeprobably" target="_blank" class="social-link">@skyeprobably</a>
@@ -230,13 +237,17 @@
             <div style="margin-bottom: 10px;">
                 <span class="btn-prompt btn-a">A</span> <span>JOIN / READY</span> &nbsp;&nbsp;&nbsp; 
                 <span class="btn-prompt btn-b">B</span> <span>LEAVE</span> &nbsp;&nbsp;&nbsp;
-                <span>◄ / ►</span> <span>CHANGE CAR</span>
+                <span class="btn-prompt btn-y" style="background:#ffd300; color:#000;">Y</span> <span>SPEED CLASS (CC)</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <span>◄ / ►</span> <span>CHANGE CAR</span> &nbsp;&nbsp;&nbsp;
+                <span>▲ / ▼</span> <span>CHANGE POWERUP</span>
             </div>
             <hr style="border: 1px solid #444; margin: 15px 0;">
             <div style="font-size: 0.85rem; color: #aaa;">
-                <span>KB 1:</span> WASD Move, SPACE Turbo, SHIFT Drift, E Magnet &nbsp;|&nbsp; 
-                <span>KB 2:</span> ARROWS Move, ENTER Turbo, R-SHIFT Drift, / Magnet<br>
-                <span>GAMEPAD:</span> RT Accel, LT Brake, RB Drift, A Turbo, X Magnet
+                <span>KB 1:</span> WASD Move, SPACE Turbo, SHIFT Drift, E Special, C Change CC<br>
+                <span>KB 2:</span> ARROWS Move, ENTER Turbo, R-SHIFT Drift, / Special<br>
+                <span>GAMEPAD:</span> RT Accel, LT Brake, RB Drift, A Turbo, X Special, Y Change CC
             </div>
         </div>
         <h3 id="lobby-start-msg" style="margin-top: 2rem; display: none;" class="blink">ALL RACERS READY...</h3>
@@ -315,6 +326,101 @@
     }
     window.addEventListener('resize', resize);
     resize();
+
+    /* --- GAME ARCHITECTURE & ADDON SYSTEM --- */
+    window.NeonGP = {
+        ccMode: 100, 
+        specials: [],
+        registerSpecial: function(spec) { this.specials.push(spec); }
+    };
+
+    // 1. Original Magnet Power-up
+    NeonGP.registerSpecial({
+        id: 'magnet', name: 'MAGNET', color: '#f0f', chargeRate: 100 / 1200, cost: 100,
+        onUse: function(p, activePlayers) {
+            p.specialState.active = true; p.specialState.timer = 60;
+            let closest = null; let minDist = Infinity;
+            activePlayers.forEach(other => {
+                if (other.id !== p.id) {
+                    const d = Math.hypot(p.x - other.x, p.y - other.y);
+                    if (d < minDist) { minDist = d; closest = other; }
+                }
+            });
+            p.specialState.target = closest ? closest.id : null;
+        },
+        onUpdate: function(p, activePlayers) {
+            if (p.specialState.active) {
+                p.specialState.timer--;
+                if (p.specialState.timer <= 0) { p.specialState.active = false; p.specialState.target = null; }
+                else if (p.specialState.target !== null) {
+                    const target = activePlayers.find(x => x.id === p.specialState.target);
+                    if (target) {
+                        const dx = target.x - p.x; const dy = target.y - p.y;
+                        const angleToTarget = Math.atan2(dy, dx);
+                        const targetToUserAngle = Math.atan2(-dy, -dx);
+                        const targetDiff = Math.cos(target.angle - targetToUserAngle);
+                        target.speed += targetDiff * 1.8; 
+                        const userDiff = Math.cos(p.angle - angleToTarget);
+                        p.speed += userDiff * 1.5;
+                        if (Math.random() > 0.4) {
+                            particles.push({ x: target.x + (Math.random()-0.5)*150, y: target.y + (Math.random()-0.5)*150, vx: (-dx/Math.hypot(dx,dy))*15, vy: (-dy/Math.hypot(dx,dy))*15, life: 0.8, color: '#f0f', size: Math.random()*12+6 });
+                        }
+                    }
+                }
+            }
+        },
+        onDraw: function(ctx, p, activePlayers) {
+            if (p.specialState.active) {
+                ctx.save(); ctx.translate(p.x, p.y);
+                let isAhead = true;
+                if (p.specialState.target !== null) {
+                    const target = activePlayers.find(x => x.id === p.specialState.target);
+                    if (target) {
+                        const angleToTarget = Math.atan2(target.y - p.y, target.x - p.x);
+                        isAhead = Math.cos(p.angle - angleToTarget) > 0;
+                    }
+                }
+                ctx.rotate(p.angle + Math.PI / 2);
+                ctx.font = '80px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const magY = isAhead ? -260 : 160; 
+                ctx.shadowBlur = 20; ctx.shadowColor = '#f0f'; ctx.fillText('🧲', 0, magY);
+                ctx.restore();
+            }
+        }
+    });
+
+    // 2. Dual Nitro Chamber
+    NeonGP.registerSpecial({
+        id: 'dualnitro', name: 'DUAL NITRO', color: '#ffaa00', chargeRate: 100 / 900, cost: 50,
+        onUse: function(p, activePlayers) {
+            p.specialState.dualNitroActive = true; p.specialState.dualNitroTimer = 35;
+        },
+        onUpdate: function(p, activePlayers) {
+            if (p.specialState.dualNitroActive) {
+                p.specialState.dualNitroTimer--;
+                if (p.specialState.dualNitroTimer <= 0) p.specialState.dualNitroActive = false;
+                p.speed += 2.5; 
+                for(let k=0; k<3; k++) {
+                    particles.push({
+                        x: p.x - Math.cos(p.angle)*100, y: p.y - Math.sin(p.angle)*100,
+                        vx: -Math.cos(p.angle)*35 + (Math.random()-0.5)*25, vy: -Math.sin(p.angle)*35 + (Math.random()-0.5)*25,
+                        life: 1.0, color: '#ffaa00', size: Math.random()*25+10
+                    });
+                }
+            }
+        }
+    });
+
+    // Dynamic Addon Loader (Silently attempts loading potential plugins)
+    const addonTypes = ['addon', 'powerup'];
+    addonTypes.forEach(type => {
+        for(let i=1; i<=10; i++) {
+            let script = document.createElement('script');
+            script.src = `addons/${type}${i}.js`;
+            script.onerror = function() { this.remove(); };
+            document.head.appendChild(script);
+        }
+    });
 
     const PLAYER_COLORS_HEX = ['#e60012', '#00c3e3', '#bbff00', '#ffaa00']; // P1 Red, P2 Blue, P3 Lime, P4 Orange
     const CAR_MODELS = ['F1', 'FERRARI', 'HELLCAT', 'TRACKHAWK'];
@@ -531,23 +637,24 @@
     window.addEventListener('gamepadconnected', handleAnyInput);
 
     const inputs = [
-        { type: 'kb1', action: false, cancel: false, start: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
-        { type: 'kb2', action: false, cancel: false, start: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
-        { type: 'pad0', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
-        { type: 'pad1', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
-        { type: 'pad2', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
-        { type: 'pad3', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false }
+        { type: 'kb1', action: false, cancel: false, start: false, ccToggle: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, special: false, leftHit: false, rightHit: false, upHit: false, downHit: false },
+        { type: 'kb2', action: false, cancel: false, start: false, ccToggle: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, special: false, leftHit: false, rightHit: false, upHit: false, downHit: false },
+        { type: 'pad0', action: false, cancel: false, start: false, ccToggle: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, special: false, leftHit: false, rightHit: false, upHit: false, downHit: false },
+        { type: 'pad1', action: false, cancel: false, start: false, ccToggle: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, special: false, leftHit: false, rightHit: false, upHit: false, downHit: false },
+        { type: 'pad2', action: false, cancel: false, start: false, ccToggle: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, special: false, leftHit: false, rightHit: false, upHit: false, downHit: false },
+        { type: 'pad3', action: false, cancel: false, start: false, ccToggle: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, special: false, leftHit: false, rightHit: false, upHit: false, downHit: false }
     ];
 
-    let prevInputState = Array(6).fill().map(()=>({ action: false, cancel: false, start: false, leftHit: false, rightHit: false, upHit: false, downHit: false }));
+    let prevInputState = Array(6).fill().map(()=>({ action: false, cancel: false, start: false, ccToggle: false, leftHit: false, rightHit: false, upHit: false, downHit: false }));
 
     function pollInput() {
         // KB1 (WASD/Space/Shift/E)
         inputs[0].action = !!keys['Space'];
         inputs[0].cancel = !!keys['Backspace'];
         inputs[0].start = !!keys['Escape'];
+        inputs[0].ccToggle = !!keys['KeyC'];
         inputs[0].turbo = !!keys['Space'];
-        inputs[0].magnet = !!keys['KeyE'];
+        inputs[0].special = !!keys['KeyE'];
         inputs[0].acc = !!keys['KeyW']; 
         inputs[0].brk = !!keys['KeyS'];
         inputs[0].left = !!keys['KeyA']; 
@@ -558,8 +665,9 @@
         inputs[1].action = !!keys['Enter'];
         inputs[1].cancel = !!keys['Backspace'];
         inputs[1].start = false;
+        inputs[1].ccToggle = false;
         inputs[1].turbo = !!keys['Enter'];
-        inputs[1].magnet = !!keys['Slash'];
+        inputs[1].special = !!keys['Slash'];
         inputs[1].acc = !!keys['ArrowUp']; 
         inputs[1].brk = !!keys['ArrowDown'];
         inputs[1].left = !!keys['ArrowLeft']; 
@@ -574,7 +682,8 @@
             if (pad) {
                 inp.action = pad.buttons[0]?.pressed; // A
                 inp.cancel = pad.buttons[1]?.pressed; // B
-                inp.magnet = pad.buttons[2]?.pressed; // X for Magnet
+                inp.special = pad.buttons[2]?.pressed; // X for Special
+                inp.ccToggle = pad.buttons[3]?.pressed; // Y for CC
                 inp.start = pad.buttons[9]?.pressed; // Menu/Start
                 inp.turbo = pad.buttons[0]?.pressed; // A (Turbo in-game)
                 inp.acc = pad.buttons[7]?.pressed; // RT
@@ -589,7 +698,7 @@
                 inp.upHit = pad.buttons[12]?.pressed || pad.axes[1] < -0.5;
                 inp.downHit = pad.buttons[13]?.pressed || pad.axes[1] > 0.5;
             } else {
-                inp.action = false; inp.cancel = false; inp.start = false; inp.acc = false; inp.brk = false; inp.drift = false; inp.magnet = false; inp.steer = 0;
+                inp.action = false; inp.cancel = false; inp.start = false; inp.ccToggle = false; inp.acc = false; inp.brk = false; inp.drift = false; inp.special = false; inp.steer = 0;
                 inp.leftHit = false; inp.rightHit = false; inp.upHit = false; inp.downHit = false;
             }
         }
@@ -605,12 +714,13 @@
             if (current.action && !prev.action) handleUIEvent(i, 'action');
             if (current.cancel && !prev.cancel) handleUIEvent(i, 'cancel');
             if (current.start && !prev.start) handleUIEvent(i, 'start');
+            if (current.ccToggle && !prev.ccToggle) handleUIEvent(i, 'ccToggle');
             if (current.leftHit && !prev.leftHit) handleUIEvent(i, 'left');
             if (current.rightHit && !prev.rightHit) handleUIEvent(i, 'right');
             if (current.upHit && !prev.upHit) handleUIEvent(i, 'up');
             if (current.downHit && !prev.downHit) handleUIEvent(i, 'down');
             
-            prev.action = current.action; prev.cancel = current.cancel; prev.start = current.start;
+            prev.action = current.action; prev.cancel = current.cancel; prev.start = current.start; prev.ccToggle = current.ccToggle;
             prev.leftHit = current.leftHit; prev.rightHit = current.rightHit;
             prev.upHit = current.upHit; prev.downHit = current.downHit;
         }
@@ -631,16 +741,16 @@
     const players = [
         { id: 0, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[0], carModel: 0, 
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null },
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} },
         { id: 1, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[1], carModel: 1,
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null },
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} },
         { id: 2, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[2], carModel: 2,
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null },
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} },
         { id: 3, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[3], carModel: 3,
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null }
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} }
     ];
 
     let gameState = {
@@ -669,6 +779,7 @@
                     <div class="arrow right">►</div>
                 </div>
                 <div class="car-name" id="name-slot-${i}"></div>
+                <div class="special-name" id="special-slot-${i}" style="color:#aaa; font-weight:800; font-size:0.9rem; margin-top:5px; height: 1.2rem;"></div>
                 <div class="status-box blink">PRESS A OR ${kbHint}</div>
             </div>
         `;
@@ -690,6 +801,8 @@
                 if (!p.ready) {
                     if (actionType === 'left') { p.carModel = (p.carModel + 3) % 4; playSound('blip'); }
                     if (actionType === 'right') { p.carModel = (p.carModel + 1) % 4; playSound('blip'); }
+                    if (actionType === 'up') { p.specialIdx = (p.specialIdx + 1) % NeonGP.specials.length; playSound('blip'); }
+                    if (actionType === 'down') { p.specialIdx = (p.specialIdx + NeonGP.specials.length - 1) % NeonGP.specials.length; playSound('blip'); }
                 }
                 updateLobbyUI();
                 checkLobbyStart();
@@ -735,6 +848,12 @@
                 checkStandingsStart();
             }
         }
+        else if (gameState.phase === 'lobby' && actionType === 'ccToggle') {
+            const modes = [50, 100, 150];
+            NeonGP.ccMode = modes[(modes.indexOf(NeonGP.ccMode) + 1) % 3];
+            playSound('blip');
+            document.getElementById('cc-display').innerText = NeonGP.ccMode + "CC";
+        }
         else if (gameState.phase === 'podium') {
             if ((inputId === 0 || inputId === 2) && actionType === 'action') {
                 const lbInput = document.getElementById('lb-name');
@@ -758,9 +877,11 @@
             const status = slot.querySelector('.status-box');
             const img = document.getElementById(`img-slot-${i}`);
             const name = document.getElementById(`name-slot-${i}`);
+            const specName = document.getElementById(`special-slot-${i}`);
             
             img.src = getCarSVG(p.carModel, p.color).src;
             name.innerText = CAR_MODELS[p.carModel];
+            specName.innerText = NeonGP.specials[p.specialIdx]?.name || '';
 
             if (p.joined) {
                 slot.classList.add('active');
@@ -872,13 +993,13 @@
     /* -------------------------------------------------------------------------- */
     // Overhauled physics engine for true racing feel at enormous scales.
     const PHYSICS = {
-        accel: 0.25, 
-        brake: 1.0, 
-        frictionBase: 0.988, 
+        accel: 0.35, 
+        brake: 1.2, 
+        frictionBase: 0.985, 
         frictionSand: 0.90, 
         frictionGrass: 0.80, 
-        turnSpeedBase: 0.06, 
-        maxSpeed: 21 // Scaled internal speed (21 internal * 4.1 multiplier = ~85 MPH display)
+        turnSpeedBase: 0.07, 
+        maxSpeed: 28 
     };
 
     function startRaceSetup() {
@@ -903,7 +1024,7 @@
             p.vx = 0; p.vy = 0; p.speed = 0; p.angle = startAngle;
             p.checkIdx = 0; p.lap = 1; p.finished = false; p.racePts = 0; p.ready = false; 
             p.turboProgress = 100; p.turboActive = false; p.turboTimer = 0;
-            p.magnetProgress = 100; p.magnetActive = false; p.magnetTimer = 0; p.magnetTarget = null;
+            p.specialProgress = 100; p.specialState = {};
         });
         
         particles = [];
@@ -948,57 +1069,19 @@
                 steer = inp.steer;
             }
 
-            // --- MAGNET LOGIC (1200 frames = 20s) ---
-            if (inp.magnet && p.magnetProgress >= 100) {
-                p.magnetActive = true;
-                p.magnetTimer = 60; // Pulses forcefully for 1 second
-                p.magnetProgress = 0;
+            // --- SPECIAL LOGIC ---
+            const specialDef = NeonGP.specials[p.specialIdx];
+            if (inp.special && p.specialProgress >= specialDef.cost) {
+                p.specialProgress -= specialDef.cost;
+                specialDef.onUse(p, activeP);
                 playSound('blip');
-                
-                let closest = null; let minDist = Infinity;
-                activeP.forEach(other => {
-                    if (other.id !== p.id) {
-                        const d = Math.hypot(p.x - other.x, p.y - other.y);
-                        if (d < minDist) { minDist = d; closest = other; }
-                    }
-                });
-                p.magnetTarget = closest ? closest.id : null;
             }
 
-            if (p.magnetProgress < 100) {
-                p.magnetProgress += (100 / 1200);
-                if (p.magnetProgress >= 100) p.magnetProgress = 100;
+            if (p.specialProgress < 100) {
+                p.specialProgress += specialDef.chargeRate;
+                if (p.specialProgress >= 100) p.specialProgress = 100;
             }
-
-            if (p.magnetActive) {
-                p.magnetTimer--;
-                if (p.magnetTimer <= 0) {
-                    p.magnetActive = false;
-                    p.magnetTarget = null;
-                } else if (p.magnetTarget !== null) {
-                    const target = activeP.find(x => x.id === p.magnetTarget);
-                    if (target) {
-                        const dx = target.x - p.x; const dy = target.y - p.y;
-                        const angleToTarget = Math.atan2(dy, dx);
-                        
-                        // Mutually beneficial/punishing speed adjustments without altering vector paths
-                        const targetToUserAngle = Math.atan2(-dy, -dx);
-                        const targetDiff = Math.cos(target.angle - targetToUserAngle);
-                        target.speed += targetDiff * 1.5; 
-                        
-                        const userDiff = Math.cos(p.angle - angleToTarget);
-                        p.speed += userDiff * 1.0;
-
-                        if (Math.random() > 0.4) {
-                            particles.push({
-                                x: target.x + (Math.random()-0.5)*150, y: target.y + (Math.random()-0.5)*150,
-                                vx: (-dx/Math.hypot(dx,dy))*15, vy: (-dy/Math.hypot(dx,dy))*15,
-                                life: 0.8, color: '#f0f', size: Math.random()*12+6
-                            });
-                        }
-                    }
-                }
-            }
+            if (specialDef.onUpdate) specialDef.onUpdate(p, activeP);
 
             // --- TURBO LOGIC ---
             if (inp.turbo && p.turboProgress >= 100) {
@@ -1012,16 +1095,17 @@
                 if (p.turboProgress >= 100) p.turboProgress = 100;
             }
 
-            let currentMaxSpeed = PHYSICS.maxSpeed;
-            let currentAccel = PHYSICS.accel;
+            let ccMult = NeonGP.ccMode / 100;
+            let currentMaxSpeed = PHYSICS.maxSpeed * ccMult;
+            let currentAccel = PHYSICS.accel * ccMult;
             let currentFriction = PHYSICS.frictionBase;
-            let currentTurnSpeed = PHYSICS.turnSpeedBase;
+            let currentTurnSpeed = PHYSICS.turnSpeedBase * (0.8 + 0.2 * ccMult);
 
             if (p.turboActive) {
                 p.turboTimer--;
                 if (p.turboTimer <= 0) p.turboActive = false;
-                currentMaxSpeed = PHYSICS.maxSpeed * 1.8; 
-                currentAccel = PHYSICS.accel * 4;
+                currentMaxSpeed *= 1.6; 
+                currentAccel *= 4;
                 acc = 1; 
                 
                 for(let k=0; k<4; k++) {
@@ -1210,8 +1294,8 @@
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowBlur = 0;
         ctx.fillText(`P${p.id+1}`, 0, -240);
 
-        // MPH mapped exactly to display 85 at the physical terminal velocity
-        const displaySpeed = Math.floor(Math.abs(p.speed) * 4.1); 
+        // MPH mapped exactly to display speed classes properly
+        const displaySpeed = Math.floor(Math.abs(p.speed) * 3.8); 
         ctx.fillStyle = '#fff'; ctx.font = '30px "Press Start 2P"';
         ctx.fillText(`${displaySpeed} MPH`, 0, -190);
 
@@ -1221,15 +1305,24 @@
         ctx.fillRect(-85, -145, (p.turboProgress / 100) * 170, 16);
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(-85, -145, 170, 16);
 
-        // Magnet UI (Bottom Bar)
+        // Special UI (Bottom Bar)
+        const specDef = NeonGP.specials[p.specialIdx];
         ctx.fillStyle = '#222'; ctx.fillRect(-85, -125, 170, 12);
-        ctx.fillStyle = p.magnetActive ? '#f0f' : (p.magnetProgress >= 100 ? '#a0a' : '#505');
-        ctx.fillRect(-85, -125, (p.magnetProgress / 100) * 170, 12);
+        
+        let barColor = specDef.color;
+        if (p.specialState.active || p.specialState.dualNitroActive) barColor = '#fff'; 
+        
+        ctx.fillStyle = barColor;
+        ctx.fillRect(-85, -125, (p.specialProgress / 100) * 170, 12);
+        
+        if (specDef.cost === 50) {
+            ctx.fillStyle = '#fff'; ctx.fillRect(-1, -125, 2, 12); 
+        }
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(-85, -125, 170, 12);
 
         ctx.rotate(p.angle + Math.PI / 2);
 
-        let speedPercent = Math.abs(p.speed) / PHYSICS.maxSpeed;
+        let speedPercent = Math.abs(p.speed) / (PHYSICS.maxSpeed * (NeonGP.ccMode / 100));
         ctx.scale(1 - speedPercent*0.05, 1 + speedPercent*0.1);
 
         const img = getCarSVG(p.carModel, p.color);
@@ -1239,26 +1332,8 @@
         }
         ctx.restore();
 
-        // Overlay Magnet visual representation
-        if (p.magnetActive) {
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            let isAhead = true;
-            if (p.magnetTarget !== null) {
-                const target = players.find(x => x.id === p.magnetTarget);
-                if (target) {
-                    const angleToTarget = Math.atan2(target.y - p.y, target.x - p.x);
-                    isAhead = Math.cos(p.angle - angleToTarget) > 0;
-                }
-            }
-            ctx.rotate(p.angle + Math.PI / 2);
-            ctx.font = '80px Arial';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            const magY = isAhead ? -260 : 160; 
-            ctx.shadowBlur = 20; ctx.shadowColor = '#f0f';
-            ctx.fillText('🧲', 0, magY);
-            ctx.restore();
-        }
+        // Overlay Special visual representation
+        if (specDef.onDraw) specDef.onDraw(ctx, p, players.filter(x=>x.joined));
     }
 
     function drawTrack() {
@@ -1326,14 +1401,17 @@
 
         if (newPhase === 'menu') {
             document.getElementById('screen-menu').classList.add('active');
+            document.getElementById('cc-display').classList.remove('active');
         } 
         else if (newPhase === 'lobby') {
             document.getElementById('screen-lobby').classList.add('active');
             document.getElementById('lobby-start-msg').style.display = 'none';
-            players.forEach(p => { p.joined=false; p.ready=false; p.carModel=p.id; }); 
+            document.getElementById('cc-display').classList.add('active');
+            players.forEach(p => { p.joined=false; p.ready=false; p.carModel=p.id; p.specialIdx=0; }); 
             updateLobbyUI();
         }
         else if (newPhase === 'race_intro') {
+            document.getElementById('cc-display').classList.remove('active');
             document.getElementById('hud').classList.add('active');
             document.getElementById('hud-track-name').innerText = currentTrack.name;
             document.getElementById('hud-track-name').style.color = currentTrack.color;
@@ -1458,8 +1536,8 @@
             
             // Draw Magnet Lightning Lines before cars to overlap correctly
             players.forEach(p => {
-                if (p.joined && p.magnetActive && p.magnetTarget !== null) {
-                    const target = players.find(x => x.id === p.magnetTarget);
+                if (p.joined && p.specialState.active && p.specialState.target !== null && NeonGP.specials[p.specialIdx].id === 'magnet') {
+                    const target = players.find(x => x.id === p.specialState.target);
                     if (target) {
                         ctx.beginPath(); ctx.moveTo(p.x, p.y);
                         const steps = 6;
@@ -1487,6 +1565,32 @@
             players.forEach(p => { if (p.joined) drawSpriteCar(p); });
 
             ctx.restore();
+            
+            // Speed Lines Effect
+            const activeRaceP = players.filter(p => p.joined && !p.finished);
+            if (activeRaceP.length > 0) {
+                let highestSpeed = 0;
+                activeRaceP.forEach(p => { if(Math.abs(p.speed) > highestSpeed) highestSpeed = Math.abs(p.speed); });
+                const speedThreshold = PHYSICS.maxSpeed * (NeonGP.ccMode / 100) * 0.85;
+                if (highestSpeed > speedThreshold) {
+                    ctx.save();
+                    ctx.resetTransform();
+                    ctx.translate(windowWidth/2, windowHeight/2);
+                    const intensity = Math.min(1.0, (highestSpeed - speedThreshold) / 10);
+                    ctx.strokeStyle = `rgba(255,255,255,${intensity * 0.3})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    for(let i=0; i<30; i++) {
+                        const ang = Math.random() * Math.PI * 2;
+                        const r1 = windowWidth * 0.4 + Math.random()*200;
+                        const r2 = windowWidth * 0.8 + Math.random()*300;
+                        ctx.moveTo(Math.cos(ang)*r1, Math.sin(ang)*r1);
+                        ctx.lineTo(Math.cos(ang)*r2, Math.sin(ang)*r2);
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
             
             if (gameState.phase === 'paused') {
                 ctx.fillStyle = 'rgba(0,0,0,0.6)';
