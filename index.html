@@ -15,6 +15,8 @@
         --switch-light: #ebebeb;
         --xbox-a: #107c10;
         --xbox-b: #e81123;
+        --xbox-x: #0067c8;
+        --xbox-y: #ffd300;
         --xbox-start: #333333;
     }
 
@@ -45,7 +47,7 @@
 
     canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
-    /* UI Overlay System (Switch/AAA Theme) */
+    /* UI Overlay System */
     #ui-layer { 
         position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
         z-index: 10; display: flex; flex-direction: column; 
@@ -83,6 +85,7 @@
     }
     .btn-a { background: var(--xbox-a); }
     .btn-b { background: var(--xbox-b); }
+    .btn-x { background: var(--xbox-x); }
     .btn-start { 
         background: var(--xbox-start); width: auto; padding: 0 12px; border-radius: 16px; font-size: 12px; border: 1px solid #555;
     }
@@ -127,7 +130,7 @@
     .controls-box {
         border-radius: 12px; padding: 1.5rem 3rem; text-align: center; line-height: 2;
         font-size: 1rem; color: #ccc; background: rgba(0,0,0,0.8); border: 2px solid #444;
-        font-weight: 700; max-width: 900px;
+        font-weight: 700; max-width: 1000px;
     }
     .controls-box span { color: var(--switch-red); font-weight: 900; }
 
@@ -231,9 +234,9 @@
             </div>
             <hr style="border: 1px solid #444; margin: 15px 0;">
             <div style="font-size: 0.85rem; color: #aaa;">
-                <span>KB 1:</span> WASD Move, SPACE Ready, SHIFT Drift &nbsp;|&nbsp; 
-                <span>KB 2:</span> ARROWS Move, ENTER Ready, R-SHIFT Drift<br>
-                <span>GAMEPAD:</span> RT Accel, LT Brake, RB Drift, A Turbo
+                <span>KB 1:</span> WASD Move, SPACE Turbo, SHIFT Drift, E Magnet &nbsp;|&nbsp; 
+                <span>KB 2:</span> ARROWS Move, ENTER Turbo, R-SHIFT Drift, / Magnet<br>
+                <span>GAMEPAD:</span> RT Accel, LT Brake, RB Drift, A Turbo, X Magnet
             </div>
         </div>
         <h3 id="lobby-start-msg" style="margin-top: 2rem; display: none;" class="blink">ALL RACERS READY...</h3>
@@ -316,15 +319,13 @@
     const PLAYER_COLORS_HEX = ['#e60012', '#00c3e3', '#bbff00', '#ffaa00']; // P1 Red, P2 Blue, P3 Lime, P4 Orange
     const CAR_MODELS = ['F1', 'FERRARI', 'HELLCAT', 'TRACKHAWK'];
     
-    // Generate distinct SVG paths for each car model to avoid external image CORS failures entirely.
-    // Each returns a data URI.
     const carImageCache = {}; 
     function getCarSVG(modelIdx, colorHex) {
         const key = `${modelIdx}_${colorHex}`;
         if (carImageCache[key]) return carImageCache[key];
 
         let svg = '';
-        if (modelIdx === 0) { // F1 (Open wheel, long nose)
+        if (modelIdx === 0) { // F1
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
                 <rect x="15" y="30" width="10" height="35" rx="3" fill="#111"/>
                 <rect x="75" y="30" width="10" height="35" rx="3" fill="#111"/>
@@ -335,7 +336,7 @@
                 <rect x="20" y="160" width="60" height="20" rx="2" fill="#222"/>
                 <circle cx="50" cy="110" r="10" fill="#000"/>
             </svg>`;
-        } else if (modelIdx === 1) { // Ferrari (Sleek, curvy)
+        } else if (modelIdx === 1) { // Ferrari
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
                 <rect x="10" y="30" width="15" height="35" rx="5" fill="#111"/>
                 <rect x="75" y="30" width="15" height="35" rx="5" fill="#111"/>
@@ -347,7 +348,7 @@
                 <circle cx="25" cy="175" r="5" fill="#f00"/>
                 <circle cx="75" cy="175" r="5" fill="#f00"/>
             </svg>`;
-        } else if (modelIdx === 2) { // Hellcat (Boxy, dual stripes)
+        } else if (modelIdx === 2) { // Hellcat
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
                 <rect x="5" y="25" width="20" height="40" rx="4" fill="#111"/>
                 <rect x="75" y="25" width="20" height="40" rx="4" fill="#111"/>
@@ -361,17 +362,35 @@
                 <rect x="20" y="15" width="15" height="8" rx="2" fill="#fff"/>
                 <rect x="65" y="15" width="15" height="8" rx="2" fill="#fff"/>
             </svg>`;
-        } else { // Trackhawk (Large SUV)
+        } else { // Trackhawk (Remodeled with AAA details)
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
-                <rect x="0" y="30" width="25" height="45" rx="6" fill="#111"/>
-                <rect x="75" y="30" width="25" height="45" rx="6" fill="#111"/>
-                <rect x="0" y="130" width="25" height="45" rx="6" fill="#111"/>
-                <rect x="75" y="130" width="25" height="45" rx="6" fill="#111"/>
-                <rect x="10" y="10" width="80" height="185" rx="15" fill="${colorHex}"/>
-                <path d="M 15 65 L 85 65 L 80 140 L 20 140 Z" fill="#1a1a24"/>
-                <rect x="25" y="75" width="50" height="55" fill="${colorHex}"/>
-                <rect x="20" y="10" width="60" height="10" fill="#222"/>
-                <rect x="30" y="10" width="40" height="30" fill="#111"/>
+                <!-- Tires -->
+                <rect x="0" y="25" width="25" height="50" rx="8" fill="#050505"/>
+                <rect x="75" y="25" width="25" height="50" rx="8" fill="#050505"/>
+                <rect x="0" y="125" width="25" height="50" rx="8" fill="#050505"/>
+                <rect x="75" y="125" width="25" height="50" rx="8" fill="#050505"/>
+                <!-- Body -->
+                <rect x="8" y="5" width="84" height="190" rx="18" fill="${colorHex}"/>
+                <!-- Hood Vents -->
+                <rect x="30" y="25" width="40" height="15" rx="3" fill="#111"/>
+                <rect x="35" y="27" width="30" height="3" fill="#333"/>
+                <rect x="35" y="33" width="30" height="3" fill="#333"/>
+                <!-- Front Grille & Headlights -->
+                <rect x="15" y="5" width="70" height="12" rx="4" fill="#111"/>
+                <rect x="18" y="7" width="15" height="8" rx="2" fill="#fff"/>
+                <rect x="67" y="7" width="15" height="8" rx="2" fill="#fff"/>
+                <!-- Windshield -->
+                <path d="M 12 65 L 88 65 L 82 145 L 18 145 Z" fill="#11151c"/>
+                <!-- Roof -->
+                <rect x="22" y="75" width="56" height="60" rx="6" fill="${colorHex}"/>
+                <!-- Panoramic Sunroof -->
+                <rect x="30" y="80" width="40" height="50" rx="4" fill="#0a0a0f"/>
+                <!-- Taillights -->
+                <rect x="12" y="188" width="25" height="7" rx="2" fill="#f00"/>
+                <rect x="63" y="188" width="25" height="7" rx="2" fill="#f00"/>
+                <rect x="37" y="190" width="26" height="5" fill="#500"/>
+                <!-- Rear Spoiler edge -->
+                <rect x="15" y="182" width="70" height="6" rx="2" fill="#111"/>
             </svg>`;
         }
         
@@ -389,10 +408,10 @@
     let actx;
     let audioInitialized = false;
 
-    // As requested: fainter menu music
+    // Fainter menu music at 95% volume
     const menuMusic = new Audio('audio/menumusic.mp3');
     menuMusic.loop = true;
-    menuMusic.volume = 0.1; 
+    menuMusic.volume = 0.95; 
 
     const raceMusic = new Audio();
     raceMusic.volume = 0.15;
@@ -409,9 +428,10 @@
 
     function playNextRaceSong() {
         if (songPlaylist.length === 0) {
-            // Re-fill playlist 1-5 ONLY as requested
+            // Re-fill playlist 1-5
             for (let i = 1; i <= 5; i++) songPlaylist.push(i);
             shuffleArray(songPlaylist);
+            // Ensure no back-to-back repeats
             if (songPlaylist[0] === lastPlayedSong && songPlaylist.length > 1) {
                 [songPlaylist[0], songPlaylist[1]] = [songPlaylist[1], songPlaylist[0]];
             }
@@ -427,14 +447,13 @@
     function handleMusicState(phase) {
         if (!audioInitialized) return;
         
-        // Menu music keeps playing through Lobby, Standings, and Podium as requested
         if (['menu', 'lobby', 'standings', 'podium', 'leaderboard'].includes(phase)) {
             raceMusic.pause();
             menuMusic.play().catch(e => console.warn("Menu audio file not found.", e));
         } else if (['race_intro', 'racing', 'paused'].includes(phase)) {
             menuMusic.pause();
             if (phase === 'paused') {
-                raceMusic.pause(); // Pause race music while paused
+                raceMusic.pause(); 
             } else if (raceMusic.paused) {
                 if(!raceMusic.src) playNextRaceSong();
                 else raceMusic.play();
@@ -480,19 +499,26 @@
             gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
             osc.start(now); osc.stop(now + 0.5);
         } else if (type === 'crash') {
-            // Noise burst for collisions
-            const bufferSize = actx.sampleRate * 0.2; // 200ms
+            const bufferSize = actx.sampleRate * 0.2; 
             const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
             const noise = actx.createBufferSource();
             noise.buffer = buffer;
-            // Filter it
             const filter = actx.createBiquadFilter();
             filter.type = 'lowpass'; filter.frequency.value = 1000;
             noise.connect(filter); filter.connect(gain);
             gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             noise.start(now);
+        } else if (type === 'lap') {
+            osc.type = 'sine';
+            [523.25, 659.25, 783.99].forEach((f, i) => { 
+                const o = actx.createOscillator(); const g = actx.createGain();
+                o.type = 'square'; o.frequency.value = f; o.connect(g); g.connect(actx.destination);
+                g.gain.setValueAtTime(0, now + i*0.1); g.gain.linearRampToValueAtTime(0.05, now + i*0.1 + 0.05);
+                g.gain.exponentialRampToValueAtTime(0.001, now + i*0.1 + 0.3);
+                o.start(now + i*0.1); o.stop(now + i*0.1 + 0.3);
+            });
         }
     }
 
@@ -505,33 +531,35 @@
     window.addEventListener('gamepadconnected', handleAnyInput);
 
     const inputs = [
-        { type: 'kb1', action: false, cancel: false, start: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, leftHit: false, rightHit: false },
-        { type: 'kb2', action: false, cancel: false, start: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, leftHit: false, rightHit: false },
-        { type: 'pad0', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, leftHit: false, rightHit: false },
-        { type: 'pad1', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, leftHit: false, rightHit: false },
-        { type: 'pad2', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, leftHit: false, rightHit: false },
-        { type: 'pad3', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, leftHit: false, rightHit: false }
+        { type: 'kb1', action: false, cancel: false, start: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
+        { type: 'kb2', action: false, cancel: false, start: false, acc: false, brk: false, left: false, right: false, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
+        { type: 'pad0', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
+        { type: 'pad1', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
+        { type: 'pad2', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false },
+        { type: 'pad3', action: false, cancel: false, start: false, acc: false, brk: false, steer: 0, drift: false, turbo: false, magnet: false, leftHit: false, rightHit: false }
     ];
 
     let prevInputState = Array(6).fill().map(()=>({ action: false, cancel: false, start: false, leftHit: false, rightHit: false, upHit: false, downHit: false }));
 
     function pollInput() {
-        // KB1 (WASD/Space/Shift)
+        // KB1 (WASD/Space/Shift/E)
         inputs[0].action = !!keys['Space'];
         inputs[0].cancel = !!keys['Backspace'];
         inputs[0].start = !!keys['Escape'];
         inputs[0].turbo = !!keys['Space'];
+        inputs[0].magnet = !!keys['KeyE'];
         inputs[0].acc = !!keys['KeyW']; 
         inputs[0].brk = !!keys['KeyS'];
         inputs[0].left = !!keys['KeyA']; 
         inputs[0].right = !!keys['KeyD'];
         inputs[0].drift = !!keys['ShiftLeft'];
         
-        // KB2 (Arrows/Enter/R-Shift)
+        // KB2 (Arrows/Enter/R-Shift/Slash)
         inputs[1].action = !!keys['Enter'];
         inputs[1].cancel = !!keys['Backspace'];
         inputs[1].start = false;
         inputs[1].turbo = !!keys['Enter'];
+        inputs[1].magnet = !!keys['Slash'];
         inputs[1].acc = !!keys['ArrowUp']; 
         inputs[1].brk = !!keys['ArrowDown'];
         inputs[1].left = !!keys['ArrowLeft']; 
@@ -546,6 +574,7 @@
             if (pad) {
                 inp.action = pad.buttons[0]?.pressed; // A
                 inp.cancel = pad.buttons[1]?.pressed; // B
+                inp.magnet = pad.buttons[2]?.pressed; // X for Magnet
                 inp.start = pad.buttons[9]?.pressed; // Menu/Start
                 inp.turbo = pad.buttons[0]?.pressed; // A (Turbo in-game)
                 inp.acc = pad.buttons[7]?.pressed; // RT
@@ -560,7 +589,7 @@
                 inp.upHit = pad.buttons[12]?.pressed || pad.axes[1] < -0.5;
                 inp.downHit = pad.buttons[13]?.pressed || pad.axes[1] > 0.5;
             } else {
-                inp.action = false; inp.cancel = false; inp.start = false; inp.acc = false; inp.brk = false; inp.drift = false; inp.steer = 0;
+                inp.action = false; inp.cancel = false; inp.start = false; inp.acc = false; inp.brk = false; inp.drift = false; inp.magnet = false; inp.steer = 0;
                 inp.leftHit = false; inp.rightHit = false; inp.upHit = false; inp.downHit = false;
             }
         }
@@ -570,7 +599,6 @@
             const current = inputs[i];
             const prev = prevInputState[i];
             
-            // Map KB directionals to hit events for UI
             if (i===0) { current.leftHit = current.left; current.rightHit = current.right; current.upHit = current.acc; current.downHit = current.brk;}
             if (i===1) { current.leftHit = current.left; current.rightHit = current.right; current.upHit = current.acc; current.downHit = current.brk;}
 
@@ -602,33 +630,33 @@
     const MAX_LAPS = 3;
     const players = [
         { id: 0, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[0], carModel: 0, 
-          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, turboProgress: 100, turboActive: false, turboTimer: 0 },
+          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
+          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null },
         { id: 1, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[1], carModel: 1,
-          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, turboProgress: 100, turboActive: false, turboTimer: 0 },
+          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
+          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null },
         { id: 2, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[2], carModel: 2,
-          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, turboProgress: 100, turboActive: false, turboTimer: 0 },
+          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
+          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null },
         { id: 3, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[3], carModel: 3,
-          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, turboProgress: 100, turboActive: false, turboTimer: 0 }
+          x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
+          turboProgress: 100, turboActive: false, turboTimer: 0, magnetProgress: 100, magnetActive: false, magnetTimer: 0, magnetTarget: null }
     ];
 
     let gameState = {
-        phase: 'menu',  // menu, lobby, race_intro, racing, paused, standings, podium, leaderboard
+        phase: 'menu', 
         previousPhase: null,
         trackOrder: [],
         currentTrackIdx: 0,
         finishers: 0,
         countdown: 0,
         camera: { x: 0, y: 0, scale: 1 },
-        pauseSelection: 0 // 0 = resume, 1 = quit
+        pauseSelection: 0 
     };
 
     let particles = [];
 
-    /* -------------------------------------------------------------------------- */
-    /* 5. UI CONTROLLER (Menus, Pause, Lobby)                                     */
-    /* -------------------------------------------------------------------------- */
-    
-    // Generate Lobby HTML explicitly to avoid manual HTML bloat
+    // Generate Lobby HTML explicitly
     const lobbyContainer = document.querySelector('.lobby-container');
     players.forEach((p, i) => {
         const kbHint = i===0 ? 'SPACE' : (i===1 ? 'ENTER' : 'GAMEPAD');
@@ -676,16 +704,15 @@
             }
         } 
         else if (gameState.phase === 'racing') {
-            // Player 1 or KB1 can pause
             if (actionType === 'start' && (inputId === 0 || inputId === 2)) {
                 gameState.previousPhase = gameState.phase;
                 changePhase('paused');
             }
         }
         else if (gameState.phase === 'paused') {
-            if (inputId === 0 || inputId === 2) { // P1 controls pause menu
+            if (inputId === 0 || inputId === 2) { 
                 if (actionType === 'up' || actionType === 'down') {
-                    gameState.pauseSelection = 1 - gameState.pauseSelection; // Toggle 0/1
+                    gameState.pauseSelection = 1 - gameState.pauseSelection; 
                     playSound('blip');
                     updatePauseMenuUI();
                 }
@@ -709,11 +736,9 @@
             }
         }
         else if (gameState.phase === 'podium') {
-            // Handled via HTML input for 1st place, but P1 can skip
             if ((inputId === 0 || inputId === 2) && actionType === 'action') {
                 const lbInput = document.getElementById('lb-name');
                 if (document.getElementById('podium-input-area').style.display !== 'none') {
-                    // Try submit
                     if(lbInput.value.trim().length > 0) saveLeaderboard(lbInput.value);
                 } else {
                     changePhase('leaderboard');
@@ -734,7 +759,6 @@
             const img = document.getElementById(`img-slot-${i}`);
             const name = document.getElementById(`name-slot-${i}`);
             
-            // Preload SVG URIs onto images
             img.src = getCarSVG(p.carModel, p.color).src;
             name.innerText = CAR_MODELS[p.carModel];
 
@@ -763,8 +787,7 @@
         if (active.length > 0 && active.every(p => p.ready)) {
             document.getElementById('lobby-start-msg').style.display = 'block';
             setTimeout(() => {
-                // Shuffle 8 tracks
-                gameState.trackOrder = [0,1,2,3,4,5,6,7];
+                gameState.trackOrder = Array.from({length: trackDefs.length}, (_, i) => i);
                 shuffleArray(gameState.trackOrder);
                 gameState.currentTrackIdx = 0;
                 players.forEach(p => p.totalPts = 0);
@@ -794,7 +817,7 @@
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 6. TRACK GENERATION                                                        */
+    /* 6. TRACK GENERATION (MASSIVE SCALES)                                       */
     /* -------------------------------------------------------------------------- */
     function catmullRom(p0, p1, p2, p3, t) {
         const t2 = t * t; const t3 = t2 * t;
@@ -823,35 +846,39 @@
         return spline;
     }
 
-    // Majorly expanded 8 tracks
+    // 8 Huge Tracks scaled perfectly for 85 MPH max speed
     const trackDefs = [
-        { name: "NEON OVAL", width: 400, color: '#e60012', pts: [{x:-2000, y:-1000}, {x:0, y:-1000}, {x:2000, y:-1000}, {x:3000, y:0}, {x:2000, y:1000}, {x:0, y:1000}, {x:-2000, y:1000}, {x:-3000, y:0}] },
-        { name: "CYBER BEAN", width: 350, color: '#00c3e3', pts: [{x:-1500,y:-1200}, {x:1000,y:-1500}, {x:2500,y:0}, {x:1000,y:1500}, {x:-2000,y:1000}, {x:-1000,y:0}] },
-        { name: "SYNTH ZIGZAG", width: 320, color: '#ff0', pts: [{x:-2500,y:-1500}, {x:-500,y:-1500}, {x:500,y:-500}, {x:2000,y:-1500}, {x:3000,y:0}, {x:2000,y:1500}, {x:-2500,y:1500}] },
-        { name: "HYPER STAR", width: 300, color: '#0f0', pts: [{x:-2000,y:-2000}, {x:0,y:-800}, {x:2000,y:-2000}, {x:1200,y:0}, {x:2500,y:2000}, {x:0,y:1000}, {x:-2500,y:2000}, {x:-1200,y:0}] },
-        { name: "DESERT SERPENT", width: 380, color: '#f09433', pts: [{x:-3000, y:-1000}, {x:-1000, y:-2000}, {x:1000, y:-500}, {x:3000, y:-2000}, {x:3500, y:500}, {x:1500, y:2000}, {x:-500, y:500}, {x:-2500, y:2000}] },
-        { name: "THE OCTAGON", width: 340, color: '#bc1888', pts: [{x:-1500, y:-2500}, {x:1500, y:-2500}, {x:2500, y:-1500}, {x:2500, y:1500}, {x:1500, y:2500}, {x:-1500, y:2500}, {x:-2500, y:1500}, {x:-2500, y:-1500}] },
-        { name: "MIDNIGHT RUN", width: 450, color: '#fff', pts: [{x:-4000, y:-500}, {x:4000, y:-500}, {x:4500, y:500}, {x:-4000, y:500}] }, // Massive drag strips
-        { name: "CIRCUIT LOOP", width: 320, color: '#ffaa00', pts: [{x:-2000, y:-1000}, {x:-1000, y:-1000}, {x:-500, y:-2000}, {x:1000, y:-2000}, {x:2000, y:0}, {x:1000, y:2000}, {x:-1500, y:2000}, {x:-2500, y:500}] }
+        { name: "NEON OVAL", width: 900, color: '#e60012', pts: [{x:-6000, y:-3000}, {x:0, y:-3000}, {x:6000, y:-3000}, {x:9000, y:0}, {x:6000, y:3000}, {x:0, y:3000}, {x:-6000, y:3000}, {x:-9000, y:0}] },
+        { name: "CYBER BEAN", width: 800, color: '#00c3e3', pts: [{x:-4500,y:-3600}, {x:3000,y:-4500}, {x:7500,y:0}, {x:3000,y:4500}, {x:-6000,y:3000}, {x:-3000,y:0}] },
+        { name: "HYPER STAR", width: 750, color: '#0f0', pts: [{x:-6000,y:-6000}, {x:0,y:-2400}, {x:6000,y:-6000}, {x:3600,y:0}, {x:7500,y:6000}, {x:0,y:3000}, {x:-7500,y:6000}, {x:-3600,y:0}] },
+        { name: "DESERT SERPENT", width: 850, color: '#f09433', pts: [{x:-9000, y:-3000}, {x:-3000, y:-6000}, {x:3000, y:-1500}, {x:9000, y:-6000}, {x:10500, y:1500}, {x:4500, y:6000}, {x:-1500, y:1500}, {x:-7500, y:6000}] },
+        { name: "THE OCTAGON", width: 800, color: '#bc1888', pts: [{x:-4500, y:-7500}, {x:4500, y:-7500}, {x:7500, y:-4500}, {x:7500, y:4500}, {x:4500, y:7500}, {x:-4500, y:7500}, {x:-7500, y:4500}, {x:-7500, y:-4500}] },
+        { name: "CIRCUIT LOOP", width: 750, color: '#ffaa00', pts: [{x:-6000, y:-3000}, {x:-3000, y:-3000}, {x:-1500, y:-6000}, {x:3000, y:-6000}, {x:6000, y:0}, {x:3000, y:6000}, {x:-4500, y:6000}, {x:-7500, y:1500}] },
+        { name: "MIDNIGHT RUN", width: 1000, color: '#fff', pts: [{x:-12000, y:-800}, {x:0, y:-800}, {x:12000, y:-800}, {x:14000, y:0}, {x:12000, y:800}, {x:0, y:800}, {x:-12000, y:800}, {x:-14000, y:0}] }, // Massive Drag Strip
+        { name: "THE COLOSSEUM", width: 1000, color: '#b200ff', pts: [{x:-8000, y:0}, {x:-5600, y:-5600}, {x:0, y:-8000}, {x:5600, y:-5600}, {x:8000, y:0}, {x:5600, y:5600}, {x:0, y:8000}, {x:-5600, y:5600}] } // Massive Perfect Donut
     ];
 
     let currentTrack = null;
 
     function buildTrack(def) {
-        const spline = generateTrackSpline(def.pts, 25); 
+        const spline = generateTrackSpline(def.pts, 100); // 100 res for massive loops to prevent blocky edges
         const checkpoints = [];
-        for(let i=0; i<spline.length; i+=5) checkpoints.push(spline[i]);
+        for(let i=0; i<spline.length; i+=20) checkpoints.push(spline[i]);
         return { name: def.name, color: def.color, width: def.width, spline: spline, checkpoints: checkpoints };
     }
 
     /* -------------------------------------------------------------------------- */
     /* 7. PHYSICS & GAME LOOP                                                     */
     /* -------------------------------------------------------------------------- */
-    // Updated physics for slower acceleration per request, and higher max speed.
+    // Overhauled physics engine for true racing feel at enormous scales.
     const PHYSICS = {
-        accel: 0.15, brake: 0.5, frictionBase: 0.985, 
-        frictionSand: 0.85, frictionGrass: 0.70, 
-        turnSpeedBase: 0.07, maxSpeed: 32
+        accel: 0.25, 
+        brake: 1.0, 
+        frictionBase: 0.988, 
+        frictionSand: 0.90, 
+        frictionGrass: 0.80, 
+        turnSpeedBase: 0.06, 
+        maxSpeed: 21 // Scaled internal speed (21 internal * 4.1 multiplier = ~85 MPH display)
     };
 
     function startRaceSetup() {
@@ -868,7 +895,7 @@
             const row = Math.floor(i / 2);
             const col = i % 2;
             const offset = (col === 0 ? -1 : 1) * (currentTrack.width * 0.25);
-            const backOffset = row * 200;
+            const backOffset = row * 500;
             
             p.x = p0.x - Math.cos(startAngle)*backOffset + Math.cos(startAngle + Math.PI/2)*offset;
             p.y = p0.y - Math.sin(startAngle)*backOffset + Math.sin(startAngle + Math.PI/2)*offset;
@@ -876,6 +903,7 @@
             p.vx = 0; p.vy = 0; p.speed = 0; p.angle = startAngle;
             p.checkIdx = 0; p.lap = 1; p.finished = false; p.racePts = 0; p.ready = false; 
             p.turboProgress = 100; p.turboActive = false; p.turboTimer = 0;
+            p.magnetProgress = 100; p.magnetActive = false; p.magnetTimer = 0; p.magnetTarget = null;
         });
         
         particles = [];
@@ -884,7 +912,7 @@
         
         let c = 3;
         const countInt = setInterval(() => {
-            if (gameState.phase === 'paused') return; // Pause timer if paused during count (rare but possible)
+            if (gameState.phase === 'paused') return; 
             if (c > 0) {
                 document.getElementById('race-msg').innerText = c;
                 playSound('count');
@@ -920,10 +948,62 @@
                 steer = inp.steer;
             }
 
-            // Turbo Logic (10s recharge = 600 frames at 60fps)
+            // --- MAGNET LOGIC (1200 frames = 20s) ---
+            if (inp.magnet && p.magnetProgress >= 100) {
+                p.magnetActive = true;
+                p.magnetTimer = 60; // Pulses forcefully for 1 second
+                p.magnetProgress = 0;
+                playSound('blip');
+                
+                let closest = null; let minDist = Infinity;
+                activeP.forEach(other => {
+                    if (other.id !== p.id) {
+                        const d = Math.hypot(p.x - other.x, p.y - other.y);
+                        if (d < minDist) { minDist = d; closest = other; }
+                    }
+                });
+                p.magnetTarget = closest ? closest.id : null;
+            }
+
+            if (p.magnetProgress < 100) {
+                p.magnetProgress += (100 / 1200);
+                if (p.magnetProgress >= 100) p.magnetProgress = 100;
+            }
+
+            if (p.magnetActive) {
+                p.magnetTimer--;
+                if (p.magnetTimer <= 0) {
+                    p.magnetActive = false;
+                    p.magnetTarget = null;
+                } else if (p.magnetTarget !== null) {
+                    const target = activeP.find(x => x.id === p.magnetTarget);
+                    if (target) {
+                        const dx = target.x - p.x; const dy = target.y - p.y;
+                        const angleToTarget = Math.atan2(dy, dx);
+                        
+                        // Mutually beneficial/punishing speed adjustments without altering vector paths
+                        const targetToUserAngle = Math.atan2(-dy, -dx);
+                        const targetDiff = Math.cos(target.angle - targetToUserAngle);
+                        target.speed += targetDiff * 1.5; 
+                        
+                        const userDiff = Math.cos(p.angle - angleToTarget);
+                        p.speed += userDiff * 1.0;
+
+                        if (Math.random() > 0.4) {
+                            particles.push({
+                                x: target.x + (Math.random()-0.5)*150, y: target.y + (Math.random()-0.5)*150,
+                                vx: (-dx/Math.hypot(dx,dy))*15, vy: (-dy/Math.hypot(dx,dy))*15,
+                                life: 0.8, color: '#f0f', size: Math.random()*12+6
+                            });
+                        }
+                    }
+                }
+            }
+
+            // --- TURBO LOGIC ---
             if (inp.turbo && p.turboProgress >= 100) {
                 p.turboActive = true;
-                p.turboTimer = 60; // 1 second of extreme boost
+                p.turboTimer = 60; 
                 p.turboProgress = 0;
                 playSound('blip');
             }
@@ -940,38 +1020,37 @@
             if (p.turboActive) {
                 p.turboTimer--;
                 if (p.turboTimer <= 0) p.turboActive = false;
-                currentMaxSpeed = PHYSICS.maxSpeed * 1.8; // Huge speed bump
+                currentMaxSpeed = PHYSICS.maxSpeed * 1.8; 
                 currentAccel = PHYSICS.accel * 4;
                 acc = 1; 
                 
-                // Massive Boost VFX
-                for(let k=0; k<3; k++) {
+                for(let k=0; k<4; k++) {
                     particles.push({
-                        x: p.x - Math.cos(p.angle)*40, y: p.y - Math.sin(p.angle)*40,
-                        vx: -Math.cos(p.angle)*15 + (Math.random()-0.5)*10,
-                        vy: -Math.sin(p.angle)*15 + (Math.random()-0.5)*10,
-                        life: 1.0, color: p.color, size: Math.random()*15+5
+                        x: p.x - Math.cos(p.angle)*100, y: p.y - Math.sin(p.angle)*100,
+                        vx: -Math.cos(p.angle)*25 + (Math.random()-0.5)*15,
+                        vy: -Math.sin(p.angle)*25 + (Math.random()-0.5)*15,
+                        life: 1.0, color: p.color, size: Math.random()*25+10
                     });
                 }
             }
 
-            // Drift Mechanic
-            if (inp.drift && Math.abs(p.speed) > 10) {
+            // --- DRIFT MECHANIC ---
+            if (inp.drift && Math.abs(p.speed) > 20) {
                 currentTurnSpeed *= 2.0; 
-                currentFriction *= 0.98; // Bleed speed
+                currentFriction *= 0.98; 
                 if (Math.abs(steer) > 0.1) {
                     particles.push({
-                        x: p.x - Math.cos(p.angle)*30, y: p.y - Math.sin(p.angle)*30,
-                        vx: p.vx*0.2 + (Math.random()-0.5)*3, vy: p.vy*0.2 + (Math.random()-0.5)*3, 
-                        life: 0.8, color: '#fff', size: Math.random()*12+6
+                        x: p.x - Math.cos(p.angle)*90, y: p.y - Math.sin(p.angle)*90,
+                        vx: p.vx*0.2 + (Math.random()-0.5)*5, vy: p.vy*0.2 + (Math.random()-0.5)*5, 
+                        life: 0.8, color: '#fff', size: Math.random()*20+8
                     });
                 }
             }
 
-            p.speed += acc * currentAccel;
+            p.speed += acc * (acc > 0 ? currentAccel : PHYSICS.brake);
             
             if (Math.abs(p.speed) > 1) {
-                const turnMod = Math.max(0.3, 1 - (Math.abs(p.speed) / currentMaxSpeed) * 0.5);
+                const turnMod = Math.max(0.3, 1 - (Math.abs(p.speed) / currentMaxSpeed) * 0.4);
                 p.angle += steer * currentTurnSpeed * turnMod;
             }
 
@@ -989,24 +1068,24 @@
             
             const w = currentTrack.width;
             const onTrack = minDist < (w / 2);
-            const inSand = !onTrack && minDist < (w / 2) + 200; // Sand bounds explicitly matched in drawing
+            const inSand = !onTrack && minDist < (w / 2) + 600; // Large visible sand boundary
             
             if (onTrack) {
                 p.speed *= currentFriction;
             } else if (inSand) {
                 p.speed *= PHYSICS.frictionSand;
-                if (Math.abs(p.speed) > 3) {
+                if (Math.abs(p.speed) > 10) {
                     particles.push({
-                        x: p.x, y: p.y, vx: -p.vx*0.3 + (Math.random()-0.5)*4, vy: -p.vy*0.3 + (Math.random()-0.5)*4,
-                        life: 1, color: '#d2b48c', size: Math.random()*10+5
+                        x: p.x, y: p.y, vx: -p.vx*0.3 + (Math.random()-0.5)*8, vy: -p.vy*0.3 + (Math.random()-0.5)*8,
+                        life: 1, color: '#7a5a32', size: Math.random()*15+5 // Dark Sand
                     });
                 }
             } else {
                  p.speed *= PHYSICS.frictionGrass;
-                 if (Math.abs(p.speed) > 3) {
+                 if (Math.abs(p.speed) > 10) {
                     particles.push({
-                        x: p.x, y: p.y, vx: -p.vx*0.3 + (Math.random()-0.5)*4, vy: -p.vy*0.3 + (Math.random()-0.5)*4,
-                        life: 1, color: '#1a1a1a', size: Math.random()*8+4
+                        x: p.x, y: p.y, vx: -p.vx*0.3 + (Math.random()-0.5)*8, vy: -p.vy*0.3 + (Math.random()-0.5)*8,
+                        life: 1, color: '#1a1a1a', size: Math.random()*12+5
                     });
                 }
             }
@@ -1027,13 +1106,13 @@
             }
         });
         
-        // Collisions (Sparks added)
+        // Collisions (Sparks)
         for(let i=0; i<activeP.length; i++) {
             for(let j=i+1; j<activeP.length; j++) {
                 const p1 = activeP[i]; const p2 = activeP[j];
                 const dx = p2.x - p1.x; const dy = p2.y - p1.y;
                 const dist = Math.hypot(dx, dy);
-                const r = 40;
+                const r = 100; // Increased radius for 2.5x spatial scale
                 if (dist < r*2) {
                     const overlap = (r*2 - dist)/2;
                     const nx = dx/dist; const ny = dy/dist;
@@ -1041,18 +1120,16 @@
                     p2.x += nx * overlap; p2.y += ny * overlap;
                     
                     const relSpeed = Math.abs(p1.speed - p2.speed);
-                    if (relSpeed > 5) {
+                    if (relSpeed > 15) {
                         playSound('crash');
-                        // Spark Explosion
-                        for(let k=0; k<10; k++) {
+                        for(let k=0; k<15; k++) {
                             particles.push({
                                 x: p1.x + nx*r, y: p1.y + ny*r,
-                                vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15,
-                                life: 1, color: ['#ff0', '#f80', '#fff'][Math.floor(Math.random()*3)], size: Math.random()*8+2
+                                vx: (Math.random()-0.5)*30, vy: (Math.random()-0.5)*30,
+                                life: 1, color: ['#ff0', '#f80', '#fff'][Math.floor(Math.random()*3)], size: Math.random()*15+5
                             });
                         }
                     }
-                    
                     const temp = p1.speed; p1.speed = p2.speed * 0.8; p2.speed = temp * 0.8;
                 }
             }
@@ -1111,7 +1188,8 @@
             }
         }
         
-        const targetScale = Math.max(0.2, Math.min(1.0, 1400 / (maxDist + 1000)));
+        // Scaled enormously for the giant new maps
+        const targetScale = Math.max(0.06, Math.min(1.0, 1400 / (maxDist + 1500)));
         gameState.camera.scale += (targetScale - gameState.camera.scale) * 0.05;
     }
 
@@ -1122,25 +1200,32 @@
         ctx.save();
         ctx.translate(p.x, p.y);
         
+        // Huge 2.5x scale rendering to match physical spacing updates
         ctx.beginPath();
-        ctx.arc(0, 0, 45, 0, Math.PI*2);
-        ctx.strokeStyle = p.color; ctx.lineWidth = 4;
-        ctx.shadowBlur = 15; ctx.shadowColor = p.color; ctx.stroke();
+        ctx.arc(0, 0, 110, 0, Math.PI*2);
+        ctx.strokeStyle = p.color; ctx.lineWidth = 10;
+        ctx.shadowBlur = 35; ctx.shadowColor = p.color; ctx.stroke();
 
-        ctx.fillStyle = p.color; ctx.font = '900 16px "Montserrat"';
+        ctx.fillStyle = p.color; ctx.font = '900 40px "Montserrat"';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowBlur = 0;
-        ctx.fillText(`P${p.id+1}`, 0, -95);
+        ctx.fillText(`P${p.id+1}`, 0, -240);
 
-        // Speedometer UI explicitly showing MPH
-        const displaySpeed = Math.floor(Math.abs(p.speed) * 4.8); 
-        ctx.fillStyle = '#fff'; ctx.font = '12px "Press Start 2P"';
-        ctx.fillText(`${displaySpeed} MPH`, 0, -75);
+        // MPH mapped exactly to display 85 at the physical terminal velocity
+        const displaySpeed = Math.floor(Math.abs(p.speed) * 4.1); 
+        ctx.fillStyle = '#fff'; ctx.font = '30px "Press Start 2P"';
+        ctx.fillText(`${displaySpeed} MPH`, 0, -190);
 
-        // Turbo UI
-        ctx.fillStyle = '#222'; ctx.fillRect(-35, -55, 70, 8);
+        // Turbo UI (Top Bar)
+        ctx.fillStyle = '#222'; ctx.fillRect(-85, -145, 170, 16);
         ctx.fillStyle = p.turboActive ? '#0ff' : (p.turboProgress >= 100 ? '#0f0' : '#f00');
-        ctx.fillRect(-35, -55, (p.turboProgress / 100) * 70, 8);
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(-35, -55, 70, 8);
+        ctx.fillRect(-85, -145, (p.turboProgress / 100) * 170, 16);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(-85, -145, 170, 16);
+
+        // Magnet UI (Bottom Bar)
+        ctx.fillStyle = '#222'; ctx.fillRect(-85, -125, 170, 12);
+        ctx.fillStyle = p.magnetActive ? '#f0f' : (p.magnetProgress >= 100 ? '#a0a' : '#505');
+        ctx.fillRect(-85, -125, (p.magnetProgress / 100) * 170, 12);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(-85, -125, 170, 12);
 
         ctx.rotate(p.angle + Math.PI / 2);
 
@@ -1149,10 +1234,31 @@
 
         const img = getCarSVG(p.carModel, p.color);
         if (img && img.complete) {
-            ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.drawImage(img, -25, -50, 50, 100);
+            ctx.shadowBlur = 25; ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.drawImage(img, -60, -125, 120, 250);
         }
         ctx.restore();
+
+        // Overlay Magnet visual representation
+        if (p.magnetActive) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            let isAhead = true;
+            if (p.magnetTarget !== null) {
+                const target = players.find(x => x.id === p.magnetTarget);
+                if (target) {
+                    const angleToTarget = Math.atan2(target.y - p.y, target.x - p.x);
+                    isAhead = Math.cos(p.angle - angleToTarget) > 0;
+                }
+            }
+            ctx.rotate(p.angle + Math.PI / 2);
+            ctx.font = '80px Arial';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            const magY = isAhead ? -260 : 160; 
+            ctx.shadowBlur = 20; ctx.shadowColor = '#f0f';
+            ctx.fillText('🧲', 0, magY);
+            ctx.restore();
+        }
     }
 
     function drawTrack() {
@@ -1160,12 +1266,12 @@
         const spline = currentTrack.spline;
         const w = currentTrack.width;
 
-        // Visual Sand Area (Clear obstacle boundary)
+        // Visual Sand Area (Huge off-road boundaries)
         ctx.beginPath(); ctx.moveTo(spline[0].x, spline[0].y);
         for(let i=1; i<spline.length; i++) ctx.lineTo(spline[i].x, spline[i].y);
         ctx.closePath();
-        ctx.lineWidth = w + 400; // Large buffer for sand
-        ctx.strokeStyle = '#a67c52'; // Visible dark sand
+        ctx.lineWidth = w + 1200; 
+        ctx.strokeStyle = '#3d2511'; // Highly visible dark sand contrasting with neon
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.stroke();
 
@@ -1173,23 +1279,23 @@
         ctx.lineWidth = w; ctx.strokeStyle = '#1a1a1f'; ctx.stroke();
 
         // Rumble Strips
-        ctx.lineWidth = 15; ctx.save();
+        ctx.lineWidth = 40; ctx.save();
         ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x + spline[i].nx * (w/2 + 2), spline[i].y + spline[i].ny * (w/2 + 2));
+        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x + spline[i].nx * (w/2 + 5), spline[i].y + spline[i].ny * (w/2 + 5));
         ctx.closePath();
-        ctx.strokeStyle = '#ff0000'; ctx.setLineDash([40, 40]); ctx.stroke();
-        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 40; ctx.stroke();
+        ctx.strokeStyle = '#ff0000'; ctx.setLineDash([100, 100]); ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 100; ctx.stroke();
 
         ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x - spline[i].nx * (w/2 + 2), spline[i].y - spline[i].ny * (w/2 + 2));
+        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x - spline[i].nx * (w/2 + 5), spline[i].y - spline[i].ny * (w/2 + 5));
         ctx.closePath();
         ctx.strokeStyle = '#ff0000'; ctx.lineDashOffset = 0; ctx.stroke();
-        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 40; ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 100; ctx.stroke();
         ctx.restore();
 
         // Neon Bounds
-        ctx.lineWidth = 6; ctx.strokeStyle = currentTrack.color;
-        ctx.shadowBlur = 20; ctx.shadowColor = currentTrack.color;
+        ctx.lineWidth = 15; ctx.strokeStyle = currentTrack.color;
+        ctx.shadowBlur = 40; ctx.shadowColor = currentTrack.color;
         ctx.beginPath();
         for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x + spline[i].nx * w/2, spline[i].y + spline[i].ny * w/2);
         ctx.closePath(); ctx.stroke();
@@ -1203,7 +1309,7 @@
         const p0 = currentTrack.checkpoints[0]; const p1 = currentTrack.checkpoints[1];
         ctx.save(); ctx.translate(p0.x, p0.y); ctx.rotate(Math.atan2(p1.y-p0.y, p1.x-p0.x));
         ctx.fillStyle = '#fff';
-        for(let i = -w/2; i < w/2; i+=25) { ctx.fillRect(0, i, 12, 12); ctx.fillRect(12, i+12, 12, 12); }
+        for(let i = -w/2; i < w/2; i+=60) { ctx.fillRect(0, i, 30, 30); ctx.fillRect(30, i+30, 30, 30); }
         ctx.restore();
     }
 
@@ -1275,7 +1381,6 @@
         const gfx = document.getElementById('podium-gfx');
         gfx.innerHTML = '';
         
-        // Order: 2nd, 1st, 3rd to layout physically
         const layout = [ {p: active[1], cls: 'podium-2', rank: '2nd'}, {p: active[0], cls: 'podium-1', rank: '1st'}, {p: active[2], cls: 'podium-3', rank: '3rd'} ];
         
         layout.forEach(spot => {
@@ -1304,7 +1409,7 @@
         let lb = JSON.parse(localStorage.getItem('neonGP_lb') || '[]');
         lb.push({ name: name, score: winner.totalPts, color: winner.color });
         lb.sort((a,b) => b.score - a.score);
-        lb = lb.slice(0, 10); // Keep top 10
+        lb = lb.slice(0, 10);
         localStorage.setItem('neonGP_lb', JSON.stringify(lb));
         
         playSound('blip');
@@ -1327,9 +1432,8 @@
         });
     }
 
-    // Keyboard bindings for UI explicit fallback
     document.getElementById('lb-name')?.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') handleUIEvent(0, 'action'); // Pass to P1 input logic
+        if(e.key === 'Enter') handleUIEvent(0, 'action'); 
     });
 
     /* -------------------------------------------------------------------------- */
@@ -1352,6 +1456,28 @@
 
             drawTrack();
             
+            // Draw Magnet Lightning Lines before cars to overlap correctly
+            players.forEach(p => {
+                if (p.joined && p.magnetActive && p.magnetTarget !== null) {
+                    const target = players.find(x => x.id === p.magnetTarget);
+                    if (target) {
+                        ctx.beginPath(); ctx.moveTo(p.x, p.y);
+                        const steps = 6;
+                        const dx = target.x - p.x; const dy = target.y - p.y;
+                        for(let k=1; k<steps; k++) {
+                            const px = p.x + dx * (k/steps) + (Math.random()-0.5)*300;
+                            const py = p.y + dy * (k/steps) + (Math.random()-0.5)*300;
+                            ctx.lineTo(px, py);
+                        }
+                        ctx.lineTo(target.x, target.y);
+                        ctx.strokeStyle = '#f0f'; ctx.lineWidth = 20; 
+                        ctx.shadowBlur = 50; ctx.shadowColor = '#f0f'; ctx.stroke();
+                        ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            });
+
             particles.forEach(p => {
                 ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
@@ -1363,12 +1489,10 @@
             ctx.restore();
             
             if (gameState.phase === 'paused') {
-                // Apply a dark dim over the canvas when paused
                 ctx.fillStyle = 'rgba(0,0,0,0.6)';
                 ctx.fillRect(0, 0, windowWidth, windowHeight);
             }
         } else {
-            // Idle background abstract visuals
             ctx.save();
             ctx.translate(windowWidth/2, windowHeight/2);
             ctx.rotate(Date.now() * 0.0002);
