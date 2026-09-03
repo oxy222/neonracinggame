@@ -1,17 +1,63 @@
-// addons/addon11.js - The Polish Update
-// - Deeper/louder motor grumble
-// - Faster addon loading
-// - Controller input fix for title screen
-// - High-quality arcade camera & zoom
-// - Return to title from setup
-// - Removes Ferrari
+// addons/addon11.js - The Polish Update (Revised)
+// - Liquid glass beta loading screen
+// - Definitively fixes menu lockouts on title screen
+// - Allows returning to title from lobby with B button
+// - Perfected infinite-zoom arcade camera for high speeds
+// - Motor hum kicks in on acceleration and roars at top speed
 
-// 1. Fast-forward initial timeouts to drastically speed up addon initialization
+const initBetaLoader = () => {
+    // Only run this once per session
+    if (sessionStorage.getItem('neon_beta_loaded')) return;
+    sessionStorage.setItem('neon_beta_loaded', 'true');
+
+    const loader = document.createElement('div');
+    loader.id = 'liquid-glass-loader';
+    loader.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999;
+        display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(circle at center, rgba(15,15,20,0.4) 0%, rgba(5,5,10,0.9) 100%);
+        backdrop-filter: blur(25px) saturate(150%);
+        -webkit-backdrop-filter: blur(25px) saturate(150%);
+        transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: all; /* Block clicks */
+    `;
+
+    // Liquid/Shiny Text Effect via CSS
+    loader.innerHTML = `
+        <style>
+            @keyframes glassShine {
+                0% { background-position: -200% center; }
+                100% { background-position: 200% center; }
+            }
+            .liquid-text {
+                font-family: 'Montserrat', sans-serif; font-weight: 900; font-style: italic;
+                font-size: clamp(2rem, 5vw, 5rem); text-align: center; margin: 0;
+                color: transparent;
+                background: linear-gradient(110deg, rgba(255,255,255,0.2) 20%, rgba(255,255,255,1) 40%, rgba(0,255,255,1) 50%, rgba(255,255,255,1) 60%, rgba(255,255,255,0.2) 80%);
+                background-size: 200% auto;
+                -webkit-background-clip: text;
+                background-clip: text;
+                animation: glassShine 2.5s linear infinite;
+                filter: drop-shadow(0 0 20px rgba(0,255,255,0.5));
+            }
+        </style>
+        <div class="liquid-text">SWITCHING TO<br>BETA UPDATE</div>
+    `;
+
+    document.body.appendChild(loader);
+
+    // Fade out and destroy after 3.5 seconds
+    setTimeout(() => {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 800);
+    }, 3500);
+};
+initBetaLoader();
+
 if (!window.addonLoadOptimized) {
     window.addonLoadOptimized = true;
     const originalTimeout = window.setTimeout;
     window.setTimeout = function(callback, delay) {
-        // If it's a large setup delay from previous addons and the game just started
         if (delay >= 500 && delay <= 2000 && performance.now() < 3000) {
             return originalTimeout(callback, 20); // Crush the delay down to 20ms
         }
@@ -19,7 +65,6 @@ if (!window.addonLoadOptimized) {
     };
 }
 
-// 2. High-Quality Arcade Camera (Smooth Panning & Reasonable Zoom Limits)
 setTimeout(() => {
     if (typeof updateCamera === 'function') {
         window.updateCamera = function() {
@@ -34,139 +79,108 @@ setTimeout(() => {
                 if (p.y > maxY) maxY = p.y;
             });
 
-            // If there's only one target, enforce a minimum synthetic box size to prevent infinite zoom-in
             if (targets.length === 1) {
-                minX -= 500; maxX += 500;
-                minY -= 500; maxY += 500;
+                minX -= 600; maxX += 600;
+                minY -= 600; maxY += 600;
             }
 
             const midX = (maxX + minX) / 2;
             const midY = (maxY + minY) / 2;
 
-            // Smooth linear interpolation for panning
-            gameState.camera.x += (midX - gameState.camera.x) * 0.1;
-            gameState.camera.y += (midY - gameState.camera.y) * 0.1;
+            // Doubled the panning interpolation speed to keep up with 150cc cars
+            gameState.camera.x += (midX - gameState.camera.x) * 0.2;
+            gameState.camera.y += (midY - gameState.camera.y) * 0.2;
 
             const boxWidth = maxX - minX;
             const boxHeight = maxY - minY;
+            const padding = 2200; // Massive padding so players never touch screen edges
 
-            const padding = 1500; // High quality arcade framing padding
             const scaleX = windowWidth / (boxWidth + padding);
             const scaleY = windowHeight / (boxHeight + padding);
 
             let targetScale = Math.min(scaleX, scaleY);
             
-            // Clamp the zoom to keep it reasonable (0.35 max zoom out, 0.8 max zoom in)
-            targetScale = Math.max(0.35, Math.min(targetScale, 0.8)); 
+            // Removed the 0.35 minimum limit. Now scales down to 0.03 for gigantic map separation.
+            // Capped maximum zoom at 0.8 so it's not claustrophobic when clustered.
+            targetScale = Math.max(0.03, Math.min(targetScale, 0.8)); 
 
-            // Smooth interpolation for zooming
-            gameState.camera.scale += (targetScale - gameState.camera.scale) * 0.05;
+            // Fast zoom interpolation
+            gameState.camera.scale += (targetScale - gameState.camera.scale) * 0.1;
         };
     }
 
-    // 3. Controller Input Fix upon returning to Title Screen
     if (typeof changePhase === 'function') {
         const originalChangePhase11 = changePhase;
         window.changePhase = function(newPhase) {
             originalChangePhase11(newPhase);
             if (newPhase === 'menu') {
-                // Force clear all input states to prevent "stuck" buttons locking out menus
+                // Aggressively wipe every possible hardware buffer state
                 if (typeof prevActionStates !== 'undefined') {
                     for(let i=0; i<prevActionStates.length; i++) prevActionStates[i] = false;
+                }
+                if (typeof inputs !== 'undefined') {
+                    inputs.forEach(inp => {
+                        inp.action = false; inp.brake = false; inp.cancel = false; inp.start = false;
+                        inp.up = false; inp.down = false; inp.left = false; inp.right = false;
+                        inp.leftHit = false; inp.rightHit = false; inp.upHit = false; inp.downHit = false;
+                    });
+                }
+                if (typeof keys !== 'undefined') {
+                    for (let key in keys) keys[key] = false;
                 }
                 if (typeof prevInputState !== 'undefined') {
                     prevInputState.forEach(s => {
                         for (let key in s) s[key] = false;
                     });
                 }
-                // Force un-ready all players just to be safe
-                players.forEach(p => { p.joined = false; p.ready = false; });
             }
         };
     }
 
-    // 4. Return to Title from Setup & Remove Ferrari
     if (typeof handleUIEvent === 'function') {
         const baseUI11 = handleUIEvent;
         window.handleUIEvent = function(inputId, actionType) {
-            const p = players.find(x => x.inputId === inputId);
-
-            if (gameState.phase === 'lobby') {
-                // Feature: Return to Title
-                if (actionType === 'cancel') {
-                    // Let the base game handle un-joining if they are currently joined
-                    baseUI11(inputId, actionType);
-                    
-                    // Immediately check if the lobby is now empty. If so, return to title.
-                    setTimeout(() => {
-                        const anyJoined = players.some(x => x.joined);
-                        if (!anyJoined && gameState.phase === 'lobby') {
-                            changePhase('menu');
-                        }
-                    }, 20); 
+            if (gameState.phase === 'lobby' && actionType === 'cancel') {
+                const p = players.find(x => x.inputId === inputId);
+                const activePlayers = players.filter(x => x.joined);
+                
+                // If the lobby is already completely empty, OR if this specific person isn't joined
+                // and they press B, take them back to the main menu instantly.
+                if (activePlayers.length === 0 || !p || !p.joined) {
+                    changePhase('menu');
+                    if (typeof playSound === 'function') playSound('blip');
                     return; 
                 }
 
-                // Feature: Remove Ferrari (Index 1) from rotation
-                if (p && !p.ready) {
-                    if (actionType === 'left') {
-                        p.carModel = (p.carModel + 7) % 8; // 8 cars total
-                        if (p.carModel === 1) p.carModel = 0; // Skip Ferrari
-                        if(typeof playSound==='function') playSound('blip');
-                        if(typeof updateLobbyUI === 'function') updateLobbyUI();
-                        return;
+                // Otherwise, let the base game handle un-joining/un-readying the player
+                baseUI11(inputId, actionType);
+                
+                // If that action resulted in the lobby becoming empty, queue an exit for the next frame
+                setTimeout(() => {
+                    if (!players.some(x => x.joined)) {
+                        changePhase('menu');
                     }
-                    if (actionType === 'right') {
-                        p.carModel = (p.carModel + 1) % 8;
-                        if (p.carModel === 1) p.carModel = 2; // Skip Ferrari
-                        if(typeof playSound==='function') playSound('blip');
-                        if(typeof updateLobbyUI === 'function') updateLobbyUI();
-                        return;
-                    }
-                }
+                }, 50); 
+                return; 
             }
             
             // Allow all other inputs to flow naturally
             baseUI11(inputId, actionType);
         };
     }
-
-    // Instantly force anyone currently on Ferrari to switch to Hellcat
-    players.forEach(p => { if (p.carModel === 1) p.carModel = 2; });
-
-    if (typeof updateLobbyUI === 'function') {
-        const oldLobby11 = updateLobbyUI;
-        window.updateLobbyUI = function() {
-            oldLobby11();
-            // Finalize display names with Ferrari stripped
-            players.forEach((p, i) => {
-                const name = document.getElementById(`name-slot-${i}`);
-                if (name && p.joined) {
-                    if (p.carModel === 0) name.innerText = 'NISSAN SKYLINE';
-                    if (p.carModel === 2) name.innerText = 'DODGE HELLCAT';
-                    if (p.carModel === 3) name.innerText = 'TRACKHAWK JEEP';
-                    if (p.carModel === 4) name.innerText = 'DODGE CHARGER';
-                    if (p.carModel === 5) name.innerText = 'MAZDA MIATA';
-                    if (p.carModel === 6) name.innerText = 'FORD MUSTANG';
-                    if (p.carModel === 7) name.innerText = 'CHEVY CORVETTE';
-                }
-            });
-        };
-        if (gameState && gameState.phase === 'lobby') window.updateLobbyUI();
-    }
 }, 100); 
 
-// 5. Enhanced Deeper / Louder Motor Grumble
 const startEnhancedGrumble = () => {
-    // Wait for AudioContext to exist
+    // Wait for AudioContext to be initialized by the player
     if (typeof actx === 'undefined' || !actx) return requestAnimationFrame(startEnhancedGrumble);
 
     let subOsc = null, subGain = null;
-    let midOsc = null, midGain = null;
+    let sawOsc = null, sawGain = null;
 
     const updateSubAudio = () => {
+        // Build synth architecture once Context is running
         if (!subOsc && actx.state === 'running') {
-            // Setup Deep Sub-Bass Oscillator
+            // 1. Deep Sub Bass (Felt more than heard)
             subOsc = actx.createOscillator();
             subOsc.type = 'sine';
             subGain = actx.createGain();
@@ -175,14 +189,18 @@ const startEnhancedGrumble = () => {
             subGain.connect(actx.destination);
             subOsc.start();
 
-            // Setup Throaty Mid-Range Oscillator
-            midOsc = actx.createOscillator();
-            midOsc.type = 'triangle';
-            midGain = actx.createGain();
-            midGain.gain.value = 0;
-            midOsc.connect(midGain);
-            midGain.connect(actx.destination);
-            midOsc.start();
+            // 2. Throaty Engine Rasp (Sawtooth through a lowpass filter)
+            sawOsc = actx.createOscillator();
+            sawOsc.type = 'sawtooth';
+            sawGain = actx.createGain();
+            sawGain.gain.value = 0;
+            const filter = actx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 250; // Muffled rasp
+            sawOsc.connect(filter);
+            filter.connect(sawGain);
+            sawGain.connect(actx.destination);
+            sawOsc.start();
         }
 
         if (subOsc && typeof gameState !== 'undefined' && gameState.phase === 'racing') {
@@ -192,30 +210,39 @@ const startEnhancedGrumble = () => {
                 if (Math.abs(p.speed) > maxSpeed) maxSpeed = Math.abs(p.speed); 
             });
 
-            // Calculate true speed ratio including CC multiplier
-            let currentMax = 28 * (window.NeonGP?.ccMode ? window.NeonGP.ccMode / 100 : 1);
-            const speedRatio = maxSpeed / currentMax;
+            // Adjust true speed tracking based on CC Multipliers
+            let ccMult = (window.NeonGP && window.NeonGP.ccMode) ? (window.NeonGP.ccMode / 100) : 1;
+            if (ccMult > 5) ccMult = ccMult / 100; // Handle arbitrary physics constants
+            
+            // 28 is base physics cap, * 1.6 accounts for turbo boosts
+            const absoluteTopSpeed = 28 * ccMult * 1.6; 
+            const speedRatio = Math.min(1.0, maxSpeed / absoluteTopSpeed);
 
-            // Kick in earlier (mid speeds) and roar up to top speeds
-            if (speedRatio > 0.3) {
-                // Scales beautifully from 0.0 to 1.4 intensity
-                const intensity = Math.min(1.4, (speedRatio - 0.3) * 1.5); 
+            // Trigger the instant you hit the gas
+            if (speedRatio > 0.02) {
+                // Volume scales smoothly. Sub gets loud, saw adds texture.
+                const volSub = 0.15 + (speedRatio * 0.7); 
+                const volSaw = 0.05 + (speedRatio * 0.25); 
 
-                // Plunge into deeper Sub Bass (30Hz to 60Hz)
-                subGain.gain.setTargetAtTime(intensity * 0.4, actx.currentTime, 0.1); 
-                subOsc.frequency.setTargetAtTime(30 + (intensity * 30), actx.currentTime, 0.1);
+                // Frequency rises with speed (RPM effect)
+                const freqSub = 35 + (speedRatio * 65);  // 35Hz -> 100Hz
+                const freqSaw = 45 + (speedRatio * 100); // 45Hz -> 145Hz
 
-                // Throaty Mid-Range growl (60Hz to 120Hz)
-                midGain.gain.setTargetAtTime(intensity * 0.15, actx.currentTime, 0.1); 
-                midOsc.frequency.setTargetAtTime(60 + (intensity * 60), actx.currentTime, 0.1);
+                // Smooth linear ramps to prevent audio popping
+                subGain.gain.setTargetAtTime(volSub, actx.currentTime, 0.05); 
+                subOsc.frequency.setTargetAtTime(freqSub, actx.currentTime, 0.05);
+
+                sawGain.gain.setTargetAtTime(volSaw, actx.currentTime, 0.05);
+                sawOsc.frequency.setTargetAtTime(freqSaw, actx.currentTime, 0.05);
             } else {
+                // Silent when stopped
                 subGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
-                midGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
+                sawGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
             }
         } else if (subGain) {
-            // Silence in menus
-            subGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
-            midGain.gain.setTargetAtTime(0, actx.currentTime, 0.1);
+            // Instantly silence when paused, in menus, or race over
+            subGain.gain.setTargetAtTime(0, actx.currentTime, 0.05);
+            sawGain.gain.setTargetAtTime(0, actx.currentTime, 0.05);
         }
 
         requestAnimationFrame(updateSubAudio);
