@@ -4,9 +4,9 @@
 window.NeonGP = window.NeonGP || {};
 window.NeonGP.raceCount = 3; 
 
-const KONAMI_CODE = ['U', 'U', 'D', 'D', 'L', 'R', 'L', 'R', 'B', 'A', 'S'];
+const KONAMI_CODE = ['U', 'U', 'D', 'D', 'L', 'R', 'L', 'R', 'B', 'A', 'SEL'];
 let inputHistories = [[], [], [], [], [], []];
-let prevRawKeys = Array(6).fill().map(() => ({ U:false, D:false, L:false, R:false, B:false, A:false, S:false, X:false }));
+let prevRawKeys = Array(6).fill().map(() => ({ U:false, D:false, L:false, R:false, B:false, A:false, S:false, SEL:false, X:false }));
 
 const initRaceCountUI = () => {
     const lobby = document.getElementById('screen-lobby');
@@ -149,19 +149,19 @@ setTimeout(() => {
             const gps = navigator.getGamepads ? navigator.getGamepads() : [];
             
             for(let i=0; i<6; i++) {
-                let curr = { U:false, D:false, L:false, R:false, B:false, A:false, S:false, X:false };
+                let curr = { U:false, D:false, L:false, R:false, B:false, A:false, S:false, SEL:false, X:false };
                 
                 // Keyboard 1
                 if (i === 0) { 
                     curr.U = !!keys['KeyW']; curr.D = !!keys['KeyS']; curr.L = !!keys['KeyA']; curr.R = !!keys['KeyD'];
                     curr.B = !!keys['ShiftLeft'] || !!keys['Backspace']; curr.A = !!keys['Space']; curr.S = !!keys['Escape'];
-                    curr.X = !!keys['KeyR'];
+                    curr.SEL = !!keys['Tab']; curr.X = !!keys['KeyR'];
                 } 
                 // Keyboard 2
                 else if (i === 1) { 
                     curr.U = !!keys['ArrowUp']; curr.D = !!keys['ArrowDown']; curr.L = !!keys['ArrowLeft']; curr.R = !!keys['ArrowRight'];
                     curr.B = !!keys['ShiftRight'] || !!keys['Backspace']; curr.A = !!keys['Enter']; curr.S = !!keys['Escape'];
-                    curr.X = !!keys['KeyR'];
+                    curr.SEL = !!keys['Backslash']; curr.X = !!keys['KeyR'];
                 } 
                 // Gamepads
                 else { 
@@ -174,6 +174,7 @@ setTimeout(() => {
                         curr.B = pad.buttons[1]?.pressed;
                         curr.A = pad.buttons[0]?.pressed;
                         curr.S = pad.buttons[9]?.pressed; // Start Button
+                        curr.SEL = pad.buttons[8]?.pressed; // Select Button
                         curr.X = pad.buttons[2]?.pressed; // X Button
                     }
                 }
@@ -181,7 +182,7 @@ setTimeout(() => {
                 const pKeys = prevRawKeys[i];
                 
                 // Track Konami Sequence
-                ['U','D','L','R','B','A','S'].forEach(k => {
+                ['U','D','L','R','B','A','SEL'].forEach(k => {
                     if (curr[k] && !pKeys[k]) {
                         inputHistories[i].push(k);
                         if (inputHistories[i].length > 11) inputHistories[i].shift();
