@@ -1,323 +1,196 @@
-// addons/addon13.js - Map Expansion Pack & AAA Selection Screen
-// Adds 5 massive, Mario Kart-inspired DLC maps and a gorgeous Map Selection UI.
-// Completely intercepts the lobby auto-start sequence to guarantee track selection.
+/* -------------------------------------------------------------------------- */
+/* ADDON 13: DLC TRACK EXPANSION & LIQUID GLASS TRACK SELECT MENU             */
+/* -------------------------------------------------------------------------- */
 
-const injectDLC = () => {
-    if (typeof trackDefs === 'undefined') return setTimeout(injectDLC, 100);
-
+(function initAddon13() {
+    // 1. Define Highly Detailed DLC Tracks (Scaled for 85MPH max speed mechanics)
     const dlcTracks = [
         { 
-            name: "RAINBOW ROAD", width: 1200, color: '#ff00ff', useImage: false, 
+            name: "RAINBOW ROAD", width: 950, color: '#ff00ff', 
             pts: [
-                {x: 0, y: -12000}, {x: 4000, y: -4000}, {x: 12000, y: -4000}, 
-                {x: 6000, y: 2000}, {x: 8000, y: 10000}, {x: 0, y: 6000}, 
-                {x: -8000, y: 10000}, {x: -6000, y: 2000}, {x: -12000, y: -4000}, 
-                {x: -4000, y: -4000}
-            ] // Massive Star Layout
+                {x: -8000, y: -10000}, {x: -2000, y: -12000}, {x: 4000, y: -9000}, 
+                {x: 8000, y: -4000}, {x: 4000, y: 0}, {x: 10000, y: 5000}, 
+                {x: 6000, y: 11000}, {x: 0, y: 8000}, {x: -6000, y: 11000}, 
+                {x: -10000, y: 5000}, {x: -5000, y: 0}, {x: -12000, y: -5000}
+            ] 
         },
         { 
-            name: "BOWSER'S CITADEL", width: 1000, color: '#ff3300', useImage: false, 
+            name: "HUSTLE HIGHWAY", width: 1000, color: '#00ffff', 
             pts: [
-                {x:-8000, y:-8000}, {x:8000, y:-8000}, {x:8000, y:-2000}, 
-                {x:2000, y:-2000}, {x:2000, y:2000}, {x:8000, y:2000}, 
-                {x:8000, y:8000}, {x:-8000, y:8000}, {x:-8000, y:2000}, 
-                {x:-2000, y:2000}, {x:-2000, y:-2000}, {x:-8000, y:-2000}
-            ] // Intimidating squared orthogonal paths
+                {x: -14000, y: -3000}, {x: -14000, y: -8000}, {x: 14000, y: -8000}, 
+                {x: 14000, y: 8000}, {x: 8000, y: 8000}, {x: 8000, y: 0}, 
+                {x: 0, y: 0}, {x: 0, y: 8000}, {x: -14000, y: 8000}
+            ] 
         },
         { 
-            name: "MOO MOO HIGHWAY", width: 1100, color: '#32cd32', useImage: false, 
+            name: "JDOT BRIDGE", width: 650, color: '#ff3333', 
             pts: [
-                {x: -10000, y: 0}, {x: -6000, y: -8000}, {x: 0, y: -4000}, 
-                {x: 6000, y: -8000}, {x: 10000, y: 0}, {x: 6000, y: 8000}, 
-                {x: 0, y: 4000}, {x: -6000, y: 8000}
-            ] // Smooth, sweeping country curves
+                {x: -10000, y: -2000}, {x: -8000, y: -6000}, {x: -4000, y: -8000}, 
+                {x: 0, y: -8000}, {x: 8000, y: -2000}, {x: 8000, y: 2000}, 
+                {x: 0, y: 8000}, {x: -4000, y: 8000}, {x: -8000, y: 6000}, 
+                {x: -10000, y: 2000}
+            ] 
         },
         { 
-            name: "TOAD'S TURNPIKE", width: 1000, color: '#ffaa00', useImage: false, 
+            name: "CHOCO CANYON", width: 850, color: '#8b4513', 
             pts: [
-                {x:-8000, y:-6000}, {x:0, y:-8000}, {x:8000, y:-6000}, 
-                {x:0, y:0}, {x:-8000, y:6000}, {x:0, y:8000}, 
-                {x:8000, y:6000}, {x:0, y:0}
-            ] // Enormous Figure-8 crossover layout
+                {x: -9000, y: -9000}, {x: -3000, y: -7000}, {x: 0, y: -10000}, 
+                {x: 5000, y: -6000}, {x: 9000, y: -9000}, {x: 7000, y: -2000}, 
+                {x: 11000, y: 4000}, {x: 4000, y: 6000}, {x: 0, y: 11000}, 
+                {x: -4000, y: 6000}, {x: -10000, y: 2000}, {x: -6000, y: -3000}
+            ] 
         },
         { 
-            name: "YOSHI'S ISLAND", width: 1000, color: '#00c3e3', useImage: false, 
+            name: "BOUNCY BRIDGE", width: 750, color: '#ffff00', 
             pts: [
-                {x: -12000, y: -4000}, {x: -6000, y: -9000}, {x: 0, y: -5000}, 
-                {x: 6000, y: -9000}, {x: 12000, y: -4000}, {x: 9000, y: 6000}, 
-                {x: 0, y: 10000}, {x: -9000, y: 6000}
-            ] // Fun, wavy, organic paths
+                {x: -12000, y: 0}, {x: -8000, y: -4000}, {x: -4000, y: 4000}, 
+                {x: 0, y: -4000}, {x: 4000, y: 4000}, {x: 8000, y: -4000}, 
+                {x: 12000, y: 0}, {x: 8000, y: 8000}, {x: 0, y: 12000}, 
+                {x: -8000, y: 8000}
+            ] 
+        },
+        { 
+            name: "OIL SLICK CIRCUIT", width: 900, color: '#4a4a4a', 
+            pts: [
+                {x: -5000, y: -10000}, {x: 5000, y: -10000}, {x: 10000, y: -5000}, 
+                {x: 5000, y: 0}, {x: 10000, y: 5000}, {x: 5000, y: 10000}, 
+                {x: -5000, y: 10000}, {x: -10000, y: 5000}, {x: -5000, y: 0}, 
+                {x: -10000, y: -5000}
+            ] 
         }
     ];
 
-    // Push the 5 new tracks onto the global registry (indices 8 through 12)
-    trackDefs.push(...dlcTracks);
-};
+    // Cache the original legacy tracks
+    const legacyTracks = [...trackDefs]; 
 
-const injectMapSelectUI = () => {
+    // 2. Inject Dark Mode Liquid Glass CSS
     const style = document.createElement('style');
-    style.id = 'dlc-map-styles';
     style.innerHTML = `
-        #screen-map-select {
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, rgba(15,15,20,0.95) 0%, rgba(5,5,10,0.98) 100%);
+        #screen-track-select {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; height: 100%; pointer-events: auto; z-index: 20;
         }
-        
-        .cup-container {
-            display: flex;
-            gap: 4vw;
-            margin-top: 2vh;
-            width: 90%;
-            max-width: 1400px;
-            justify-content: center;
+        #screen-track-select.active { display: flex; }
+        .liquid-panel {
+            background: rgba(15, 15, 19, 0.45); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            border-radius: 24px; 
+            padding: 40px 60px; 
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.1);
+            display: flex; gap: 30px;
         }
-        
-        .cup-card {
-            flex: 1;
-            height: 55vh;
-            min-height: 400px;
-            background: linear-gradient(180deg, #1a1a24 0%, #0a0a0f 100%);
-            border: 6px solid #333;
-            border-radius: 24px;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+        .track-pack-btn {
+            background: rgba(0, 0, 0, 0.3); border: 2px solid #333; border-radius: 16px;
+            padding: 30px; width: 350px; text-align: center; cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: #aaa;
         }
-        
-        .cup-card.selected {
-            border-color: var(--switch-cyan, #00ffff);
-            transform: scale(1.05) translateY(-15px);
-            background: linear-gradient(180deg, #2a2a3a 0%, #101018 100%);
-            box-shadow: 0 30px 60px rgba(0,255,255,0.2), inset 0 0 40px rgba(0,255,255,0.1);
+        .track-pack-btn h3 { font-size: 2vw; margin-bottom: 10px; color: inherit; }
+        .track-pack-btn p { font-weight: 700; font-size: 1rem; line-height: 1.5; }
+        .track-pack-btn.selected {
+            background: rgba(230, 0, 18, 0.15); border-color: var(--switch-red);
+            color: #fff; transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(230, 0, 18, 0.3);
         }
-        
-        .cup-title {
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 900;
-            font-style: italic;
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            color: #fff;
-            text-align: center;
-            margin-bottom: 5px;
-            text-shadow: 3px 3px 0 #000;
-            letter-spacing: 2px;
-        }
-        
-        .cup-card.selected .cup-title {
-            color: var(--switch-cyan, #00ffff);
-            text-shadow: 0 0 20px rgba(0,255,255,0.8);
-        }
-        
-        .cup-desc {
-            color: #888; 
-            font-weight: 800; 
-            font-size: 1.2rem;
-            margin-bottom: 25px;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-        }
-
-        .cup-tracks {
-            font-family: 'Press Start 2P', monospace;
-            font-size: clamp(0.7rem, 1.5vw, 1.2rem);
-            color: #bbb;
-            line-height: 2.5;
-            text-align: center;
-            width: 100%;
-        }
-        
-        .cup-tracks span { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
-
-        .dlc-badge {
-            position: absolute;
-            top: -25px;
-            right: -35px;
-            background: var(--switch-red, #e60012);
-            color: #fff;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 900;
-            padding: 40px 50px 10px 50px;
-            transform: rotate(45deg);
-            font-size: 1.5rem;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.6);
-            letter-spacing: 2px;
-        }
+        .track-pack-btn.selected h3 { color: var(--switch-red); text-shadow: 0 0 10px rgba(230,0,18,0.5); }
     `;
     document.head.appendChild(style);
 
-    const mapScreen = document.createElement('div');
-    mapScreen.id = 'screen-map-select';
-    mapScreen.className = 'screen';
-    mapScreen.innerHTML = `
-        <h2 style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 2vh; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.3);">CHOOSE YOUR GRAND PRIX</h2>
-        <div class="cup-container">
-            <div class="cup-card selected" id="cup-0">
-                <div class="cup-title">NEON CUP</div>
-                <div class="cup-desc">ORIGINAL GRAND PRIX CIRCUITS</div>
-                <div class="cup-tracks">
-                    <span>1.</span> THE CLASSIC<br>
-                    <span>2.</span> CYBER BEAN<br>
-                    <span>3.</span> SYNTH ZIGZAG<br>
-                    <span>4.</span> HYPER STAR<br>
-                    <span>5.</span> NEON OVAL<br>
-                    <span>6.</span> DESERT SERPENT<br>
-                    <span>7.</span> THE OCTAGON<br>
-                    <span>8.</span> CIRCUIT LOOP
+    // 3. Inject DOM Elements
+    const trackMenuHTML = `
+        <div id="screen-track-select" class="screen">
+            <h2>SELECT CAMPAIGN</h2>
+            <div class="liquid-panel" id="track-menu-options">
+                <div class="track-pack-btn selected" id="pack-legacy">
+                    <h3>LEGACY</h3>
+                    <p>8 Original Maps<br>Standard Circuits<br>Oval, Hyper Star</p>
+                </div>
+                <div class="track-pack-btn" id="pack-dlc">
+                    <h3>EXPANSION</h3>
+                    <p>6 DLC Maps<br>Highly Technical<br>Rainbow Road, JDot Bridge</p>
                 </div>
             </div>
-            
-            <div class="cup-card" id="cup-1">
-                <div class="dlc-badge">NEW!</div>
-                <div class="cup-title" style="color: #ff00ff;">SPECIAL CUP</div>
-                <div class="cup-desc">MARIO KART EXPANSION TRACKS</div>
-                <div class="cup-tracks" style="color: #ddd;">
-                    <span style="color:#ff00ff;">1.</span> RAINBOW ROAD<br>
-                    <span style="color:#ff3300;">2.</span> BOWSER'S CITADEL<br>
-                    <span style="color:#32cd32;">3.</span> MOO MOO HIGHWAY<br>
-                    <span style="color:#ffaa00;">4.</span> TOAD'S TURNPIKE<br>
-                    <span style="color:#00c3e3;">5.</span> YOSHI'S ISLAND
-                </div>
+            <div style="margin-top: 3rem; display: flex; align-items: center; font-weight: 800; font-size: 1.5rem;" class="blink">
+                PRESS <span class="btn-prompt btn-a">A</span> TO CONFIRM
             </div>
-        </div>
-        <div style="margin-top: 4vh; display: flex; align-items: center; font-weight: 900; font-size: 1.8rem; color: #fff;" class="blink">
-            P1: PRESS <span class="btn-prompt btn-a">A</span> TO CONFIRM
         </div>
     `;
-    document.getElementById('ui-layer').appendChild(mapScreen);
-};
+    document.getElementById('ui-layer').insertAdjacentHTML('beforeend', trackMenuHTML);
 
-setTimeout(() => {
-    injectMapSelectUI();
-    injectDLC();
+    // 4. State Management for the New Screen
+    let trackSelectIndex = 0; // 0 = Legacy, 1 = DLC
 
-    // 1. Un-intercepted copy of the original race starter logic
-    window.forceStartRaceSetup = typeof startRaceSetup === 'function' ? startRaceSetup : () => console.error('startRaceSetup not found');
-
-    // 2. Intercept the automated race setup to divert players to the Map Screen
-    if (typeof startRaceSetup === 'function') {
-        window.startRaceSetup = function() {
-            if (gameState.phase === 'lobby') {
-                // Safely block the race from starting and switch to Map Selection!
-                changePhase('map_select');
-            } else {
-                // If we are already past the lobby (e.g. moving between tracks in a tournament), proceed normally
-                window.forceStartRaceSetup();
-            }
-        };
+    function updateTrackMenuUI() {
+        document.getElementById('pack-legacy').classList.toggle('selected', trackSelectIndex === 0);
+        document.getElementById('pack-dlc').classList.toggle('selected', trackSelectIndex === 1);
     }
 
-    // 3. Register the new UI phase in the Screen Manager
-    if (typeof changePhase === 'function') {
-        const originalChangePhase13 = changePhase;
-        window.changePhase = function(newPhase) {
-            originalChangePhase13(newPhase);
-            if (newPhase === 'map_select') {
-                // Hide all standard screens, explicitly show our map select
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                document.getElementById('screen-map-select').classList.add('active');
-                window.gameState.mapSelection = 0; // Default to Neon Cup
-                updateMapSelectGraphics();
-            }
-        };
-    }
-
-    // 4. Input Handler for Map Selection (D-Pad / A Button)
-    if (typeof handleUIEvent === 'function') {
-        const originalHandleUI13 = handleUIEvent;
-        window.handleUIEvent = function(inputId, actionType) {
-            
-            if (typeof gameState !== 'undefined' && gameState.phase === 'map_select') {
-                // Restrict UI navigation to Player 1 (KB1 or Pad1)
-                if (inputId === 0 || inputId === 2) {
-                    if (actionType === 'left' || actionType === 'right') {
-                        gameState.mapSelection = 1 - gameState.mapSelection; // Toggles between 0 and 1
-                        updateMapSelectGraphics();
-                        if(typeof playSound === 'function') playSound('blip');
-                    } 
-                    else if (actionType === 'action') {
-                        if(typeof playSound === 'function') playSound('ready');
-                        
-                        // Populate track order based on cup chosen
-                        if (gameState.mapSelection === 0) {
-                            // Neon Cup (Original 8 Tracks)
-                            gameState.trackOrder = [0, 1, 2, 3, 4, 5, 6, 7];
-                        } else {
-                            // Special Cup (The 5 New MK DLC Tracks)
-                            gameState.trackOrder = [8, 9, 10, 11, 12];
-                        }
-                        
-                        // Shuffle the chosen cup's tracks
-                        if (typeof shuffleArray === 'function') shuffleArray(gameState.trackOrder);
-                        
-                        // Reset points and trigger the authentic race start
-                        gameState.currentTrackIdx = 0;
-                        players.forEach(p => p.totalPts = 0);
-                        
-                        // Use our cached un-intercepted function to actually boot the physics engine
-                        window.forceStartRaceSetup();
-                    }
-                }
-                return; // Consume the input so base game doesn't process it
-            }
-            
-            // Allow all other game inputs to flow normally
-            originalHandleUI13(inputId, actionType);
-        };
-    }
-
-    // 5. Update footer prompts if the Switch UI (Addon 6) is active
-    if (typeof updateFooterPrompts === 'function') {
-        const origFooter13 = updateFooterPrompts;
-        window.updateFooterPrompts = function(phase) {
-            origFooter13(phase);
-            if (phase === 'map_select') {
-                const footer = document.getElementById('nx-footer');
-                if (footer) {
-                    footer.innerHTML = `
-                        <div class="nx-prompt-item"><span class="btn-prompt btn-a">A</span> <span>CONFIRM CUP</span></div>
-                        <div class="nx-prompt-item"><span class="btn-prompt pill">◄ ►</span> <span>SELECT</span></div>
-                    `;
-                }
-            }
-        };
-    }
-
-    // Make Rainbow Road physically shift colors in real-time
-    if (typeof drawTrack === 'function') {
-        const originalDrawTrack13 = drawTrack;
-        window.drawTrack = function() {
-            if (currentTrack && currentTrack.name === "RAINBOW ROAD") {
-                // Calculate dynamic HSL color based on system time clock
-                const hue = (Date.now() * 0.15) % 360;
-                currentTrack.color = `hsl(${hue}, 100%, 60%)`;
-            }
-            originalDrawTrack13();
-        };
-    }
-
-}, 2000); // 2000ms delay ensures this hooks the engine AFTER all previous addons load
-
-function updateMapSelectGraphics() {
-    const cup0 = document.getElementById('cup-0');
-    const cup1 = document.getElementById('cup-1');
-    
-    if (cup0 && cup1) {
-        if (window.gameState.mapSelection === 0) {
-            cup0.classList.add('selected');
-            cup1.classList.remove('selected');
-            cup1.style.borderColor = '#333';
-        } else {
-            cup1.classList.add('selected');
-            cup0.classList.remove('selected');
-            // Give DLC card a special dynamic glowing magenta color when selected
-            cup1.style.borderColor = '#ff00ff';
+    // 5. Override `checkLobbyStart` to redirect to Track Select instead of Race[cite: 1]
+    window.checkLobbyStart = function() {
+        const active = players.filter(p => p.joined);
+        if (active.length > 0 && active.every(p => p.ready)) {
+            document.getElementById('lobby-start-msg').style.display = 'block';
+            setTimeout(() => {
+                changePhase('track_select');
+            }, 1500);
         }
-    }
-}
+    };
+
+    // 6. Hook into existing `changePhase` to handle the new screen[cite: 1]
+    const originalChangePhase = window.changePhase;
+    window.changePhase = function(newPhase) {
+        if (newPhase === 'track_select') {
+            gameState.phase = newPhase;
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-track-select').classList.add('active');
+            trackSelectIndex = 0;
+            updateTrackMenuUI();
+        } else {
+            // Remove our active class if switching elsewhere
+            document.getElementById('screen-track-select')?.classList.remove('active');
+            originalChangePhase(newPhase);
+        }
+    };
+
+    // 7. Hook into existing `handleUIEvent` to capture inputs on the new screen[cite: 1]
+    const originalHandleUIEvent = window.handleUIEvent;
+    window.handleUIEvent = function(inputId, actionType) {
+        if (gameState.phase === 'track_select') {
+            // Only P1 (Keyboard 1 or Gamepad 1) controls the menu
+            if (inputId === 0 || inputId === 2) {
+                if (actionType === 'left' && trackSelectIndex === 1) {
+                    trackSelectIndex = 0; playSound('blip'); updateTrackMenuUI();
+                }
+                if (actionType === 'right' && trackSelectIndex === 0) {
+                    trackSelectIndex = 1; playSound('blip'); updateTrackMenuUI();
+                }
+                if (actionType === 'action') {
+                    playSound('ready');
+                    
+                    // Mutate the global constant array to load the correct pack
+                    trackDefs.length = 0; 
+                    const selectedPack = trackSelectIndex === 0 ? legacyTracks : dlcTracks;
+                    selectedPack.forEach(track => trackDefs.push(track));
+
+                    // Standardize start sequence logic based on base game[cite: 1]
+                    gameState.trackOrder = Array.from({length: trackDefs.length}, (_, i) => i);
+                    shuffleArray(gameState.trackOrder);
+                    gameState.currentTrackIdx = 0;
+                    players.forEach(p => p.totalPts = 0);
+                    
+                    startRaceSetup();
+                }
+                if (actionType === 'cancel') {
+                    playSound('blip');
+                    changePhase('lobby'); // Go back to player ready up
+                }
+            }
+        } else {
+            originalHandleUIEvent(inputId, actionType);
+        }
+    };
+
+    console.log("Addon 13: Expansion Tracks & Liquid Glass Track Select Loaded.");
+})();
