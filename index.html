@@ -413,10 +413,15 @@
 
     // Dynamic Addon Loader (Silently attempts loading potential plugins)
     const addonTypes = ['addon', 'powerup'];
+    const disabledMods = JSON.parse(localStorage.getItem('NeonGP_disabledMods') || '[]');
+    
     addonTypes.forEach(type => {
         for(let i=1; i<=10; i++) {
+            const fileName = `${type}${i}.js`;
+            if (disabledMods.includes(fileName)) continue; // Skip loading if disabled in Mod Menu
+            
             let script = document.createElement('script');
-            script.src = `addons/${type}${i}.js`;
+            script.src = `addons/${fileName}`;
             script.onerror = function() { this.remove(); };
             document.head.appendChild(script);
         }
