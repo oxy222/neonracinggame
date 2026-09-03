@@ -539,8 +539,8 @@
 
     function playNextRaceSong() {
         if (songPlaylist.length === 0) {
-            // Re-fill playlist 1-5
-            for (let i = 1; i <= 5; i++) songPlaylist.push(i);
+            // Re-fill playlist 1-10
+            for (let i = 1; i <= 10; i++) songPlaylist.push(i);
             shuffleArray(songPlaylist);
             // Ensure no back-to-back repeats
             if (songPlaylist[0] === lastPlayedSong && songPlaylist.length > 1) {
