@@ -252,3 +252,36 @@ const startEnhancedGrumble = () => {
 };
 
 startEnhancedGrumble();
+
+// Expand Race Soundtrack (Songs 1-10)
+if (typeof playNextRaceSong === 'function' && typeof raceMusic !== 'undefined') {
+    // Unbind the original base game listener
+    raceMusic.removeEventListener('ended', playNextRaceSong);
+    
+    window.playNextRaceSong = function() {
+        if (songPlaylist.length === 0) {
+            // Re-fill playlist with 1 through 10
+            for (let i = 1; i <= 10; i++) songPlaylist.push(i);
+            
+            // Shuffle array
+            for (let i = songPlaylist.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [songPlaylist[i], songPlaylist[j]] = [songPlaylist[j], songPlaylist[i]];
+            }
+            
+            // Prevent back-to-back repeats
+            if (songPlaylist[0] === lastPlayedSong && songPlaylist.length > 1) {
+                [songPlaylist[0], songPlaylist[1]] = [songPlaylist[1], songPlaylist[0]];
+            }
+        }
+        
+        const nextSong = songPlaylist.shift();
+        lastPlayedSong = nextSong;
+        
+        raceMusic.src = `audio/song${nextSong}.mp3`;
+        raceMusic.play().catch(e => console.warn("Race audio file not found.", e));
+    };
+    
+    // Bind the new expanded listener
+    raceMusic.addEventListener('ended', window.playNextRaceSong);
+}
