@@ -460,23 +460,10 @@
         }
     });
 
-    const addonTypes = ['addon', 'powerup'];
-    const disabledMods = JSON.parse(localStorage.getItem('NeonGP_disabledMods') || '[]');
+    // We no longer load addons dynamically, we hardcode the logic to fix the mod conflict issues.
     
-    addonTypes.forEach(type => {
-        for(let i=1; i<=10; i++) {
-            const fileName = `${type}${i}.js`;
-            if (disabledMods.includes(fileName)) continue; 
-            
-            let script = document.createElement('script');
-            script.src = `addons/${fileName}`;
-            script.onerror = function() { this.remove(); };
-            document.head.appendChild(script);
-        }
-    });
-
     const PLAYER_COLORS_HEX = ['#e60012', '#00c3e3', '#bbff00', '#ffaa00']; 
-    const CAR_MODELS = ['F1', 'FERRARI', 'HELLCAT', 'TRACKHAWK', 'NEON RUNNER', 'DELUXO', 'LOWRIDER', 'APOC BUGGY'];
+    const CAR_MODELS = ['NISSAN SKYLINE', 'FERRARI', 'HELLCAT', 'TRACKHAWK', 'DODGE CHARGER', 'MAZDA MIATA', 'FORD MUSTANG', 'CHEVY CORVETTE', 'NEON RUNNER', 'DELUXO', 'LOWRIDER', 'APOC BUGGY'];
     
     const carImageCache = {}; 
     function getCarSVG(modelIdx, colorHex) {
@@ -484,42 +471,46 @@
         if (carImageCache[key]) return carImageCache[key];
 
         let svg = '';
-        if (modelIdx === 0) { // Detailed F1
+        if (modelIdx === 0) { // Skyline (Overwrites old F1)
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
-                <!-- Racing Slicks -->
-                <rect x="5" y="25" width="16" height="40" rx="3" fill="#111" />
-                <rect x="79" y="25" width="16" height="40" rx="3" fill="#111" />
-                <rect x="5" y="130" width="18" height="45" rx="3" fill="#111" />
-                <rect x="77" y="130" width="18" height="45" rx="3" fill="#111" />
-                <!-- Carbon Fiber Suspension Arms -->
-                <path d="M 21 35 L 40 45 M 21 55 L 40 50 M 79 35 L 60 45 M 79 55 L 60 50" stroke="#333" stroke-width="2.5"/>
-                <path d="M 23 140 L 40 130 M 23 160 L 40 150 M 77 140 L 60 130 M 77 160 L 60 150" stroke="#333" stroke-width="2.5"/>
-                <!-- Multi-element Front Wing -->
-                <path d="M 12 10 L 88 10 L 82 20 L 18 20 Z" fill="${colorHex}"/>
-                <rect x="15" y="6" width="70" height="3" fill="#111"/>
-                <rect x="18" y="12" width="64" height="2" fill="#222"/>
-                <!-- Sleek Aerodynamic Body -->
-                <path d="M 45 20 L 55 20 Q 60 40 62 70 L 72 120 L 62 170 L 38 170 L 28 120 L 38 70 Q 40 40 45 20 Z" fill="${colorHex}"/>
-                <path d="M 45 20 L 55 20 L 58 70 L 65 120 L 55 170 L 45 170 L 35 120 L 42 70 Z" fill="#000" opacity="0.2"/>
-                <!-- Open Cockpit -->
-                <path d="M 40 85 Q 50 80 60 85 L 58 115 Q 50 120 42 115 Z" fill="#111"/>
-                <!-- Detailed Racing Seat & Belts -->
-                <rect x="44" y="92" width="12" height="18" rx="4" fill="#222"/>
-                <rect x="42" y="110" width="16" height="5" rx="2" fill="#333"/>
-                <path d="M 46 95 L 46 105 M 54 95 L 54 105" stroke="#d00" stroke-width="1.5"/>
-                <!-- F1 Steering Wheel with displays/buttons -->
-                <rect x="44" y="86" width="12" height="5" rx="1" fill="#444"/>
-                <circle cx="46" cy="88" r="1" fill="#0f0"/>
-                <circle cx="54" cy="88" r="1" fill="#f00"/>
-                <rect x="48" y="87" width="4" height="2" fill="#0ff"/>
-                <!-- Overhead Airbox & Roll Hoop -->
-                <path d="M 45 115 L 55 115 L 58 135 L 42 135 Z" fill="#1a1a1a"/>
-                <circle cx="50" cy="120" r="3" fill="#000"/>
-                <!-- DRS Rear Wing -->
-                <rect x="22" y="168" width="56" height="20" rx="3" fill="#111"/>
-                <rect x="22" y="168" width="6" height="22" rx="1" fill="${colorHex}"/>
-                <rect x="72" y="168" width="6" height="22" rx="1" fill="${colorHex}"/>
-                <rect x="28" y="172" width="44" height="4" fill="#333"/>
+                <!-- Wide Tires -->
+                <rect x="6" y="25" width="16" height="40" rx="3" fill="#050505"/>
+                <rect x="78" y="25" width="16" height="40" rx="3" fill="#050505"/>
+                <rect x="6" y="140" width="16" height="40" rx="3" fill="#050505"/>
+                <rect x="78" y="140" width="16" height="40" rx="3" fill="#050505"/>
+                <!-- Main Chassis -->
+                <path d="M 15 15 L 85 15 L 90 60 L 88 150 L 85 190 L 15 190 L 12 150 L 10 60 Z" fill="${colorHex}"/>
+                <!-- Highlight/Shading -->
+                <path d="M 15 15 L 85 15 L 88 60 L 12 60 Z" fill="#fff" opacity="0.1"/>
+                <path d="M 15 190 L 85 190 L 88 150 L 12 150 Z" fill="#000" opacity="0.2"/>
+                <!-- Hood details & Intercooler -->
+                <rect x="30" y="10" width="40" height="8" rx="2" fill="#111"/>
+                <rect x="35" y="12" width="30" height="4" fill="#ccc"/>
+                <path d="M 35 25 L 65 25 L 70 45 L 30 45 Z" fill="#222" opacity="0.4"/>
+                <rect x="42" y="30" width="16" height="10" rx="2" fill="#000"/>
+                <!-- Headlights -->
+                <rect x="18" y="16" width="20" height="10" rx="2" fill="#eef"/>
+                <rect x="62" y="16" width="20" height="10" rx="2" fill="#eef"/>
+                <circle cx="23" cy="21" r="3" fill="#fff"/>
+                <circle cx="77" cy="21" r="3" fill="#fff"/>
+                <!-- Windshield -->
+                <path d="M 20 70 L 80 70 L 72 105 L 28 105 Z" fill="#151520"/>
+                <!-- Roof -->
+                <rect x="28" y="105" width="44" height="40" fill="${colorHex}"/>
+                <!-- Rear Window -->
+                <path d="M 28 145 L 72 145 L 80 170 L 20 170 Z" fill="#151520"/>
+                <!-- Iconic Taillights -->
+                <rect x="15" y="185" width="70" height="10" rx="3" fill="#222"/>
+                <circle cx="25" cy="190" r="4.5" fill="#f00" stroke="#500" stroke-width="1"/>
+                <circle cx="37" cy="190" r="3.5" fill="#f00" stroke="#500" stroke-width="1"/>
+                <circle cx="63" cy="190" r="3.5" fill="#f00" stroke="#500" stroke-width="1"/>
+                <circle cx="75" cy="190" r="4.5" fill="#f00" stroke="#500" stroke-width="1"/>
+                <!-- Rear Wing -->
+                <rect x="10" y="175" width="80" height="4" fill="#111"/>
+                <rect x="15" y="170" width="4" height="12" fill="#333"/>
+                <rect x="81" y="170" width="4" height="12" fill="#333"/>
+                <!-- Exhaust -->
+                <circle cx="20" cy="198" r="3" fill="#aaa"/>
             </svg>`;
         } else if (modelIdx === 1) { // Detailed Ferrari Hypercar
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
@@ -665,37 +656,189 @@
                 <circle cx="28" cy="193" r="3.5" fill="#555"/>
                 <circle cx="72" cy="193" r="3.5" fill="#555"/>
             </svg>`;
-        } else if (modelIdx === 4) { // Detailed Neon Runner Cyberpunk
+        } else if (modelIdx === 4) { // Charger
+             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+                <!-- Wide Tires -->
+                <rect x="5" y="25" width="20" height="45" rx="5" fill="#111"/>
+                <rect x="75" y="25" width="20" height="45" rx="5" fill="#111"/>
+                <rect x="5" y="135" width="20" height="45" rx="5" fill="#111"/>
+                <rect x="75" y="135" width="20" height="45" rx="5" fill="#111"/>
+                <!-- Muscular Main Body -->
+                <path d="M 12 20 Q 50 15 88 20 C 95 30, 95 160, 88 185 Q 50 190 12 185 C 5 160, 5 30, 12 20 Z" fill="${colorHex}"/>
+                <!-- Highlight/Shading -->
+                <path d="M 12 20 Q 50 15 88 20 C 95 30, 92 80, 88 100 Q 50 90 12 100 C 8 80, 5 30, 12 20 Z" fill="#fff" opacity="0.1"/>
+                <!-- Hood Vents & Scoop -->
+                <rect x="30" y="25" width="40" height="45" rx="5" fill="#222" opacity="0.3"/>
+                <rect x="35" y="30" width="30" height="25" rx="3" fill="#111"/> 
+                <rect x="37" y="32" width="26" height="4" fill="#000"/>
+                <!-- Front Grille & Lights -->
+                <rect x="15" y="18" width="70" height="8" rx="2" fill="#111"/>
+                <circle cx="22" cy="22" r="3" fill="#ffdd00"/>
+                <circle cx="28" cy="22" r="3" fill="#ffdd00"/>
+                <circle cx="72" cy="22" r="3" fill="#ffdd00"/>
+                <circle cx="78" cy="22" r="3" fill="#ffdd00"/>
+                <!-- Windshield -->
+                <path d="M 18 75 Q 50 65 82 75 L 78 115 Q 50 110 22 115 Z" fill="#111"/>
+                <!-- Roof -->
+                <rect x="22" y="82" width="56" height="50" rx="4" fill="${colorHex}"/>
+                <!-- Rear Window -->
+                <path d="M 24 135 Q 50 130 76 135 L 82 165 Q 50 160 18 165 Z" fill="#111"/>
+                <!-- Rear Spoiler -->
+                <rect x="12" y="173" width="76" height="8" rx="3" fill="#111"/>
+                <rect x="15" y="175" width="70" height="4" rx="2" fill="#222"/>
+                <!-- Signature Charger Taillight Bar -->
+                <rect x="15" y="184" width="70" height="4" rx="2" fill="#f00"/>
+                <!-- Side Mirrors -->
+                <path d="M 10 80 L 5 80 L 5 70 Z" fill="#222"/>
+                <path d="M 90 80 L 95 80 L 95 70 Z" fill="#222"/>
+            </svg>`;
+        } else if (modelIdx === 5) { // Miata
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
-                <!-- Magnetic Hover Pads with glow -->
-                <rect x="10" y="30" width="12" height="40" rx="6" fill="#000" stroke="${colorHex}" stroke-width="2.5" opacity="0.9"/>
-                <rect x="78" y="30" width="12" height="40" rx="6" fill="#000" stroke="${colorHex}" stroke-width="2.5" opacity="0.9"/>
-                <rect x="10" y="130" width="12" height="40" rx="6" fill="#000" stroke="${colorHex}" stroke-width="2.5" opacity="0.9"/>
-                <rect x="78" y="130" width="12" height="40" rx="6" fill="#000" stroke="${colorHex}" stroke-width="2.5" opacity="0.9"/>
-                <!-- Stealth Fighter Body Shape -->
-                <path d="M 25 15 L 75 15 L 85 90 L 75 185 L 25 185 L 15 90 Z" fill="#0a0a0c"/>
-                <path d="M 35 25 L 65 25 L 70 90 L 65 175 L 35 175 L 30 90 Z" fill="#151518" stroke="#222" stroke-width="2"/>
-                <!-- Intricate Cyber Circuit Traces -->
-                <path d="M 25 15 L 30 40 L 40 50 M 75 15 L 70 40 L 60 50 M 15 90 L 30 90 M 85 90 L 70 90 M 25 185 L 35 150 L 45 140 M 75 185 L 65 150 L 55 140" stroke="${colorHex}" stroke-width="1.5" fill="none" opacity="0.9"/>
-                <path d="M 40 50 L 50 40 L 60 50 M 45 140 L 50 130 L 55 140" stroke="${colorHex}" stroke-width="1" fill="none" opacity="0.6"/>
+                <!-- Tires -->
+                <rect x="12" y="30" width="15" height="35" rx="4" fill="#0a0a0a"/>
+                <rect x="73" y="30" width="15" height="35" rx="4" fill="#0a0a0a"/>
+                <rect x="12" y="140" width="15" height="35" rx="4" fill="#0a0a0a"/>
+                <rect x="73" y="140" width="15" height="35" rx="4" fill="#0a0a0a"/>
+                <!-- Main Body Curves -->
+                <path d="M 25 20 Q 50 12 75 20 C 88 28, 92 60, 90 100 C 88 150, 85 175, 75 185 Q 50 190 25 185 C 15 175, 12 150, 10 100 C 8 60, 12 28, 25 20 Z" fill="${colorHex}"/>
+                <!-- Body Highlights -->
+                <path d="M 25 20 Q 50 12 75 20 C 88 28, 92 60, 90 100 Q 50 110 10 100 C 8 60, 12 28, 25 20 Z" fill="#fff" opacity="0.1"/>
+                <!-- Hood Lines -->
+                <path d="M 35 25 Q 30 50 35 80 M 65 25 Q 70 50 65 80" stroke="#000" stroke-width="1.5" stroke-opacity="0.3" fill="none"/>
+                <!-- Iconic Pop-up Headlights (Open) -->
+                <rect x="22" y="28" width="16" height="14" rx="3" fill="${colorHex}"/>
+                <rect x="23" y="29" width="14" height="12" rx="2" fill="#111"/>
+                <rect x="24" y="32" width="12" height="6" rx="3" fill="#fff" opacity="0.9"/>
+                <rect x="62" y="28" width="16" height="14" rx="3" fill="${colorHex}"/>
+                <rect x="63" y="29" width="14" height="12" rx="2" fill="#111"/>
+                <rect x="64" y="32" width="12" height="6" rx="3" fill="#fff" opacity="0.9"/>
+                <!-- Front Grille (Smiley Face) -->
+                <path d="M 35 15 Q 50 22 65 15" stroke="#111" stroke-width="4" stroke-linecap="round" fill="none"/>
+                <!-- Windshield -->
+                <path d="M 18 85 Q 50 70 82 85 L 76 100 Q 50 95 24 100 Z" fill="#151520"/>
+                <!-- Open Cabin / Interior -->
+                <path d="M 22 100 Q 50 95 78 100 L 75 150 Q 50 160 25 150 Z" fill="#2a2a30"/>
+                <!-- Seats -->
+                <rect x="28" y="115" width="18" height="25" rx="6" fill="#111"/>
+                <rect x="54" y="115" width="18" height="25" rx="6" fill="#111"/>
+                <!-- Steering Wheel -->
+                <circle cx="37" cy="110" r="6" stroke="#444" stroke-width="2" fill="none"/>
+                <rect x="36" y="110" width="2" height="6" fill="#444"/>
+                <!-- Chrome Roll Hoops -->
+                <path d="M 28 145 Q 37 130 46 145 M 54 145 Q 63 130 72 145" stroke="#ccc" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <!-- Side Mirrors -->
+                <path d="M 15 85 L 8 85 L 12 78 Z" fill="${colorHex}"/>
+                <path d="M 85 85 L 92 85 L 88 78 Z" fill="${colorHex}"/>
+                <!-- Trunk Outline -->
+                <path d="M 25 155 Q 50 160 75 155 L 70 180 Q 50 185 30 180 Z" stroke="#000" stroke-width="1.5" stroke-opacity="0.2" fill="none"/>
+                <!-- Taillights -->
+                <rect x="18" y="180" width="20" height="7" rx="3" fill="#f00"/>
+                <rect x="62" y="180" width="20" height="7" rx="3" fill="#f00"/>
+                <!-- Exhaust Pipe -->
+                <circle cx="75" cy="190" r="3" fill="#666"/>
+            </svg>`;
+        } else if (modelIdx === 6) { // Mustang
+            svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+                <!-- Tires -->
+                <rect x="4" y="25" width="18" height="42" rx="4" fill="#111"/>
+                <rect x="78" y="25" width="18" height="42" rx="4" fill="#111"/>
+                <rect x="4" y="135" width="18" height="45" rx="4" fill="#111"/>
+                <rect x="78" y="135" width="18" height="45" rx="4" fill="#111"/>
+                <!-- Body -->
+                <path d="M 18 15 Q 50 5 82 15 C 88 30 90 150 85 185 Q 50 195 15 185 C 10 150 12 30 18 15 Z" fill="${colorHex}"/>
+                <!-- Shading -->
+                <path d="M 18 15 Q 50 5 82 15 C 88 30 89 80 85 100 Q 50 90 15 100 C 10 80 12 30 18 15 Z" fill="#fff" opacity="0.15"/>
+                <!-- Racing Stripes -->
+                <path d="M 40 10 L 40 190" stroke="#fff" stroke-width="6" opacity="0.8"/>
+                <path d="M 60 10 L 60 190" stroke="#fff" stroke-width="6" opacity="0.8"/>
+                <!-- Front Grille & Headlights -->
+                <rect x="25" y="12" width="50" height="10" fill="#111"/>
+                <rect x="45" y="13" width="10" height="8" rx="2" fill="#333"/> 
+                <path d="M 18 15 L 28 17 L 28 22 L 15 20 Z" fill="#eef"/>
+                <path d="M 82 15 L 72 17 L 72 22 L 85 20 Z" fill="#eef"/>
+                <!-- Hood Scoop -->
+                <path d="M 35 30 L 65 30 L 70 60 L 30 60 Z" fill="#222" opacity="0.4"/>
+                <rect x="40" y="32" width="20" height="5" fill="#000"/>
+                <!-- Windshield -->
+                <path d="M 22 75 Q 50 65 78 75 L 72 105 Q 50 100 28 105 Z" fill="#1a1a24"/>
+                <!-- Roof -->
+                <rect x="28" y="105" width="44" height="45" rx="4" fill="${colorHex}"/>
+                <!-- Fastback Rear Window -->
+                <path d="M 30 150 L 70 150 L 76 175 L 24 175 Z" fill="#1a1a24"/>
+                <!-- Tri-bar Taillights -->
+                <rect x="18" y="183" width="6" height="8" rx="1" fill="#f00"/>
+                <rect x="26" y="184" width="6" height="8" rx="1" fill="#f00"/>
+                <rect x="34" y="185" width="6" height="8" rx="1" fill="#f00"/>
+                <rect x="76" y="183" width="6" height="8" rx="1" fill="#f00"/>
+                <rect x="68" y="184" width="6" height="8" rx="1" fill="#f00"/>
+                <rect x="60" y="185" width="6" height="8" rx="1" fill="#f00"/>
+                <!-- Exhausts -->
+                <circle cx="25" cy="195" r="3.5" fill="#666"/>
+                <circle cx="75" cy="195" r="3.5" fill="#666"/>
+            </svg>`;
+        } else if (modelIdx === 7) { // Corvette
+            svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+                <!-- Tires -->
+                <rect x="8" y="25" width="15" height="40" rx="3" fill="#0a0a0a"/>
+                <rect x="77" y="25" width="15" height="40" rx="3" fill="#0a0a0a"/>
+                <rect x="5" y="130" width="18" height="45" rx="3" fill="#0a0a0a"/>
+                <rect x="77" y="130" width="18" height="45" rx="3" fill="#0a0a0a"/>
+                <!-- Aggressive Aero Body -->
+                <path d="M 50 5 L 80 30 L 92 110 L 85 185 L 50 195 L 15 185 L 8 110 L 20 30 Z" fill="${colorHex}"/>
+                <!-- Highlight/Shading -->
+                <path d="M 50 5 L 80 30 L 92 110 L 50 90 L 8 110 L 20 30 Z" fill="#fff" opacity="0.1"/>
+                <!-- Front Splitter & Intakes -->
+                <path d="M 40 8 L 60 8 L 75 20 L 80 30 L 20 30 L 25 20 Z" fill="#111"/>
+                <path d="M 50 5 L 60 15 L 40 15 Z" fill="${colorHex}"/>
+                <!-- Angular Headlights -->
+                <polygon points="25,25 35,15 40,30 20,40" fill="#fff" opacity="0.9"/>
+                <polygon points="75,25 65,15 60,30 80,40" fill="#fff" opacity="0.9"/>
+                <!-- Windshield / Canopy -->
+                <path d="M 35 75 Q 50 60 65 75 L 75 110 Q 50 120 25 110 Z" fill="#151520"/>
+                <!-- Roof -->
+                <path d="M 35 110 L 65 110 L 60 130 L 40 130 Z" fill="${colorHex}"/>
+                <!-- Mid-Engine Glass -->
+                <polygon points="40,130 60,130 55,165 45,165" fill="#151520"/>
+                <rect x="47" y="135" width="6" height="25" fill="#444"/>
+                <!-- Side Intakes (Boomerangs) -->
+                <polygon points="12,110 25,110 30,130 8,140" fill="#050505"/>
+                <polygon points="88,110 75,110 70,130 92,140" fill="#050505"/>
+                <!-- Rear Wing -->
+                <path d="M 15 175 Q 50 165 85 175 L 90 182 Q 50 175 10 182 Z" fill="#111"/>
+                <!-- Angular Taillights -->
+                <polygon points="20,185 40,182 42,187 22,190" fill="#f00"/>
+                <polygon points="80,185 60,182 58,187 78,190" fill="#f00"/>
+                <!-- Quad Exhaust Tips -->
+                <rect x="35" y="192" width="6" height="5" rx="1" fill="#ccc"/>
+                <rect x="43" y="192" width="6" height="5" rx="1" fill="#ccc"/>
+                <rect x="51" y="192" width="6" height="5" rx="1" fill="#ccc"/>
+                <rect x="59" y="192" width="6" height="5" rx="1" fill="#ccc"/>
+            </svg>`;
+        } else if (modelIdx === 8) { // Neon Runner
+             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+                <!-- Hover Pads -->
+                <rect x="15" y="25" width="10" height="40" rx="3" fill="#000"/>
+                <rect x="75" y="25" width="10" height="40" rx="3" fill="#000"/>
+                <rect x="15" y="140" width="10" height="40" rx="3" fill="#000"/>
+                <rect x="75" y="140" width="10" height="40" rx="3" fill="#000"/>
+                <!-- Sleek OLED Black Body -->
+                <path d="M 25 20 Q 50 10 75 20 L 85 100 L 75 180 Q 50 190 25 180 L 15 100 Z" fill="#0a0a0c"/>
+                <!-- Cyber/Sci-fi Detailing -->
+                <path d="M 35 30 L 65 30 L 70 80 L 30 80 Z" fill="#151518" stroke="#222" stroke-width="2"/>
+                <path d="M 25 120 L 75 120 L 80 170 L 20 170 Z" fill="#151518" stroke="#222" stroke-width="2"/>
+                <!-- Neon Glow Lines linked to colorHex -->
+                <path d="M 30 25 L 30 175 M 70 25 L 70 175 M 40 15 L 50 5 L 60 15 M 50 5 L 50 185" stroke="${colorHex}" stroke-width="3" fill="none" opacity="0.9"/>
                 <!-- Central Pilot Cockpit Canopy -->
                 <path d="M 40 60 L 60 60 L 65 110 L 50 120 L 35 110 Z" fill="#000"/>
                 <path d="M 45 65 L 55 65 L 58 105 L 50 112 L 42 105 Z" fill="#112" opacity="0.8"/>
                 <!-- Holographic Dash & Joystick Controls -->
                 <path d="M 42 70 Q 50 65 58 70" stroke="${colorHex}" stroke-width="2" fill="none"/>
-                <rect x="45" y="85" width="10" height="15" rx="3" fill="#2a2a30"/>
-                <circle cx="45" cy="78" r="2" fill="none" stroke="#0ff" stroke-width="1.5"/>
-                <circle cx="55" cy="78" r="2" fill="none" stroke="#0ff" stroke-width="1.5"/>
-                <!-- Exposed Glowing Fusion Engine Core -->
-                <circle cx="50" cy="150" r="15" fill="#000" stroke="${colorHex}" stroke-width="3"/>
-                <circle cx="50" cy="150" r="8" fill="${colorHex}" opacity="0.8"/>
-                <circle cx="50" cy="150" r="3" fill="#fff"/>
-                <rect x="46" y="165" width="8" height="20" fill="${colorHex}"/>
-                <!-- Sweeping Front LED Light Bar -->
-                <rect x="30" y="10" width="40" height="3" fill="${colorHex}" opacity="0.9"/>
-                <rect x="38" y="10" width="24" height="3" fill="#fff"/>
+                <!-- Glowing Fusion Core -->
+                <circle cx="50" cy="140" r="15" stroke="${colorHex}" stroke-width="2" fill="#000" opacity="0.9"/>
+                <circle cx="50" cy="140" r="8" fill="${colorHex}" opacity="0.7"/>
+                <circle cx="50" cy="140" r="3" fill="#fff"/>
             </svg>`;
-        } else if (modelIdx === 5) { // Detailed DELUXO (Time Machine)
+        } else if (modelIdx === 9) { // DELUXO (Time Machine)
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
                 <!-- DMC Style Wheels -->
                 <rect x="8" y="30" width="14" height="35" rx="2" fill="#111"/>
@@ -752,7 +895,7 @@
                 <line x1="18" y1="40" x2="16" y2="175" stroke="#222" stroke-width="2"/>
                 <line x1="82" y1="40" x2="84" y2="175" stroke="#222" stroke-width="2"/>
             </svg>`;
-        } else if (modelIdx === 6) { // Detailed Lowrider
+        } else if (modelIdx === 10) { // Detailed Lowrider
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
                 <!-- Whitewall Tires -->
                 <rect x="6" y="25" width="14" height="40" rx="5" fill="#111"/>
@@ -1462,6 +1605,7 @@
                     else { p.joined = false; p.inputId = -1; playSound('blip'); }
                 }
                 if (!p.ready) {
+                    // Update this to use CAR_MODELS.length dynamically
                     if (actionType === 'left') { p.carModel = (p.carModel + (CAR_MODELS.length - 1)) % CAR_MODELS.length; playSound('blip'); }
                     if (actionType === 'right') { p.carModel = (p.carModel + 1) % CAR_MODELS.length; playSound('blip'); }
                     if (actionType === 'up') { p.specialIdx = (p.specialIdx + 1) % NeonGP.specials.length; playSound('blip'); }
