@@ -1,3 +1,5 @@
+// addons/addon10.js - Vehicle Expansion Pack 3
+// Adds the Tron-inspired Neon Runner, Time Machine, Lowrider, and Apocalypse Buggy.
 
 const tronSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
     <rect x="15" y="25" width="10" height="40" rx="3" fill="#000"/>
@@ -71,74 +73,60 @@ const buggySVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
     <path d="M 20 180 L 30 195 L 40 180 M 60 180 L 70 195 L 80 180" fill="#777"/>
 </svg>`;
 
-// Using a 2500ms timeout so this runs decisively AFTER addon9.js
-setTimeout(() => {
-    
-    if (typeof getCarSVG === 'function') {
-        const originalGetCar = getCarSVG;
-        window.getCarSVG = function(modelIdx, colorHex) {
-            if (modelIdx === 6) return createAddonCarSVG(tronSVG, colorHex, '6');
-            if (modelIdx === 7) return createAddonCarSVG(deloreanSVG, colorHex, '7');
-            if (modelIdx === 8) return createAddonCarSVG(lowriderSVG, colorHex, '8');
-            if (modelIdx === 9) return createAddonCarSVG(buggySVG, colorHex, '9');
-            
-            // Pass all other indices (0-3 base, 4-5 addon9) back down the chain
-            return originalGetCar(modelIdx, colorHex);
-        }
-    }
-    
-    const addonCarCache = {};
-    function createAddonCarSVG(svgTpl, color, id) {
-        const key = `${id}_${color}`;
-        if (addonCarCache[key]) return addonCarCache[key];
-        
-        const finalSVG = svgTpl.replace(/VAR_COLOR/g, color);
-        const img = new Image();
-        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(finalSVG);
-        addonCarCache[key] = img;
-        return img;
-    }
+// We dynamically push our new cars to the global CAR_MODELS array!
+// This ensures compatibility with disabled addons and fixes the hardcoded % 4 limit.
+const startIdx = CAR_MODELS.length;
+CAR_MODELS.push('NEON RUNNER', 'TIME MACHINE', 'LOWRIDER', 'APOC BUGGY');
 
-    if (typeof handleUIEvent === 'function') {
-        const originalUI = handleUIEvent;
-        window.handleUIEvent = function(inputId, actionType) {
-            const p = players.find(x => x.inputId === inputId);
-            
-            // We intercept here to enforce the new maximum of 10 total cars (0 to 9)
-            if (gameState.phase === 'lobby' && p && !p.ready) {
-                if (actionType === 'left') { 
-                    p.carModel = (p.carModel + 9) % 10; // Equivalent to -1 with wrap
-                    if(typeof playSound==='function') playSound('blip'); 
-                    if(typeof updateLobbyUI === 'function') updateLobbyUI();
-                    return; 
-                }
-                if (actionType === 'right') { 
-                    p.carModel = (p.carModel + 1) % 10; 
-                    if(typeof playSound==='function') playSound('blip'); 
-                    if(typeof updateLobbyUI === 'function') updateLobbyUI();
-                    return;
-                }
-            }
-            
-            originalUI(inputId, actionType);
-        }
-    }
+const addonCarCache = {};
+function createAddonCarSVG(svgTpl, color, id) {
+    const key = `${id}_${color}`;
+    if (addonCarCache[key]) return addonCarCache[key];
     
-    // Update lobby naming plates to show the new names
-    if (typeof updateLobbyUI === 'function') {
-        const origLobby = updateLobbyUI;
-        window.updateLobbyUI = function() {
-            origLobby();
-            players.forEach((p, i) => {
-                const name = document.getElementById(`name-slot-${i}`);
-                if (name && p.joined) {
-                    if (p.carModel === 6) name.innerText = 'NEON RUNNER';
-                    if (p.carModel === 7) name.innerText = 'TIME MACHINE';
-                    if (p.carModel === 8) name.innerText = 'LOWRIDER';
-                    if (p.carModel === 9) name.innerText = 'APOC BUGGY';
-                }
-            });
-        }
-        if (gameState && gameState.phase === 'lobby') window.updateLobbyUI();
+    const finalSVG = svgTpl.replace(/VAR_COLOR/g, color);
+    const img = new Image();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(finalSVG);
+    addonCarCache[key] = img;
+    return img;
+}
+
+if (typeof getCarSVG === 'function') {
+    const originalGetCar = getCarSVG;
+    window.getCarSVG = function(modelIdx, colorHex) {
+        if (modelIdx === startIdx) return createAddonCarSVG(tronSVG, colorHex, 'neon');
+        if (modelIdx === startIdx + 1) return createAddonCarSVG(deloreanSVG, colorHex, 'time');
+        if (modelIdx === startIdx + 2) return createAddonCarSVG(lowriderSVG, colorHex, 'low');
+        if (modelIdx === startIdx + 3) return createAddonCarSVG(buggySVG, colorHex, 'apoc');
+        
+        // Pass all other indices back down the chain
+        return originalGetCar(modelIdx, colorHex);
     }
-}, 2500); // 2.5 seconds guarantees it hooks after Addon 9
+}
+
+if (typeof handleUIEvent === 'function') {
+    const originalUI = handleUIEvent;
+    window.handleUIEvent = function(inputId, actionType) {
+        const p = players.find(x => x.inputId === inputId);
+        
+        // We intercept here to enforce the dynamic maximum of CAR_MODELS.length
+        if (gameState.phase === 'lobby' && p && !p.ready) {
+            if (actionType === 'left') { 
+                p.carModel = (p.carModel + CAR_MODELS.length - 1) % CAR_MODELS.length; 
+                if(typeof playSound==='function') playSound('blip'); 
+                if(typeof updateLobbyUI === 'function') updateLobbyUI();
+                return; 
+            }
+            if (actionType === 'right') { 
+                p.carModel = (p.carModel + 1) % CAR_MODELS.length; 
+                if(typeof playSound==='function') playSound('blip'); 
+                if(typeof updateLobbyUI === 'function') updateLobbyUI();
+                return;
+            }
+        }
+        
+        originalUI(inputId, actionType);
+    }
+}
+
+// We no longer need to patch updateLobbyUI just to set the names, 
+// nor do we need a timeout. The base game natively uses CAR_MODELS[p.carModel]!
