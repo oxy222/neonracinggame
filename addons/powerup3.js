@@ -1,11 +1,14 @@
 // addons/powerup_neon.js - NEON POWER Special
 // Grants a Star Power-style rainbow gradient, +10% speed over the max limit, and custom audio.
 
-// Pre-defined rainbow hex values to prevent overwhelming the SVG cache
+// 36-step smooth rainbow gradient to prevent harsh jumps
 const rainbowHex = [
-    '#ff0000', '#ff8000', '#ffff00', '#80ff00', 
-    '#00ff00', '#00ff80', '#00ffff', '#0080ff', 
-    '#0000ff', '#8000ff', '#ff00ff', '#ff0080'
+    '#ff0000', '#ff2b00', '#ff5500', '#ff8000', '#ffaa00', '#ffd500', 
+    '#ffff00', '#d4ff00', '#aaff00', '#80ff00', '#55ff00', '#2bff00', 
+    '#00ff00', '#00ff2b', '#00ff55', '#00ff80', '#00ffaa', '#00ffd5', 
+    '#00ffff', '#00d4ff', '#00aaff', '#0080ff', '#0055ff', '#002bff', 
+    '#0000ff', '#2b00ff', '#5500ff', '#8000ff', '#aa00ff', '#d400ff', 
+    '#ff00ff', '#ff00d4', '#ff00aa', '#ff0080', '#ff0055', '#ff002b'
 ];
 
 window.NeonGP.registerSpecial({
@@ -16,9 +19,9 @@ window.NeonGP.registerSpecial({
     cost: 100, // Costs a full bar
     
     onUse: function(p, activePlayers) {
-        // Activate the power state and set the 7-second timer (420 frames)
+        // Activate the power state and set the 6-second timer (360 frames @ 60fps)
         p.specialState.neonActive = true;
-        p.specialState.neonTimer = 420; 
+        p.specialState.neonTimer = 360; 
         
         // Save their original lobby color so we can revert them later
         if (!p.specialState.originalColor) {
@@ -27,10 +30,23 @@ window.NeonGP.registerSpecial({
         
         p.specialState.colorIndex = 0;
 
-        // Play the custom audio file
-        const neonAudio = new Audio('audio/neonpower.mp3');
-        neonAudio.volume = 0.8;
-        neonAudio.play().catch(e => console.warn("Neon Power audio not found.", e));
+        // Pre-warm the SVG image cache for all 36 colors to completely prevent flickering
+        if (typeof getCarSVG === 'function') {
+            rainbowHex.forEach(hex => getCarSVG(p.carModel, hex));
+        }
+
+        // Silence global background music tracks
+        if (typeof raceMusic !== 'undefined') raceMusic.volume = 0;
+        if (typeof menuMusic !== 'undefined') menuMusic.volume = 0;
+
+        // Play the custom audio file and store reference to stop it abruptly
+        if (p.specialState.neonAudio) {
+            p.specialState.neonAudio.pause();
+            p.specialState.neonAudio.currentTime = 0;
+        }
+        p.specialState.neonAudio = new Audio('audio/neonpower.mp3');
+        p.specialState.neonAudio.volume = 0.8;
+        p.specialState.neonAudio.play().catch(e => console.warn("Neon Power audio not found.", e));
     },
     
     onUpdate: function(p, activePlayers) {
@@ -41,13 +57,37 @@ window.NeonGP.registerSpecial({
             if (p.specialState.neonTimer <= 0) {
                 p.specialState.neonActive = false;
                 p.color = p.specialState.originalColor;
+                
+                // Stop music abruptly
+                if (p.specialState.neonAudio) {
+                    p.specialState.neonAudio.pause();
+                    p.specialState.neonAudio.currentTime = 0;
+                }
+
+                // Restore background music only if no one else is currently using Neon Power
+                const anyoneElseActive = activePlayers.some(other => other.id !== p.id && other.specialState.neonActive);
+                if (!anyoneElseActive) {
+                    if (typeof raceMusic !== 'undefined') raceMusic.volume = 0.50;
+                    if (typeof menuMusic !== 'undefined') menuMusic.volume = 0.95;
+                }
                 return;
             }
 
-            // Shift through the rainbow every 2 frames for a smooth but performant cycle
+            // Shift through the rainbow every 2 frames for a smooth cycle
+            // We only apply the color if the SVG image is fully parsed to prevent blank-frame flickering
             if (p.specialState.neonTimer % 2 === 0) {
-                p.specialState.colorIndex = (p.specialState.colorIndex + 1) % rainbowHex.length;
-                p.color = rainbowHex[p.specialState.colorIndex];
+                const nextIndex = (p.specialState.colorIndex + 1) % rainbowHex.length;
+                
+                let imageReady = true;
+                if (typeof getCarSVG === 'function') {
+                    const img = getCarSVG(p.carModel, rainbowHex[nextIndex]);
+                    if (!img || !img.complete) imageReady = false;
+                }
+
+                if (imageReady) {
+                    p.specialState.colorIndex = nextIndex;
+                    p.color = rainbowHex[p.specialState.colorIndex];
+                }
             }
 
             // Add exactly 10% speed bypassing the normal engine clamp by translating positional coordinates
