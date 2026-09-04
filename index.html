@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
-<title>NEON GRAND PRIX</title>
+<title>NEON GRAND PRIX V2</title>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,800;1,900&family=Press+Start+2P&display=swap');
     
@@ -32,7 +32,7 @@
         color: #fff; 
     }
     
-    /* Neon Grid Background */
+    /* Neon Grid Background (Menu Only) */
     #bg-grid {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; 
         background-image: 
@@ -43,6 +43,7 @@
         perspective: 500px;
         transform-style: preserve-3d;
     }
+    #bg-grid.hidden { display: none; }
     
     #bg-grid::after {
         content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -77,7 +78,7 @@
     
     .arcade-font { font-family: 'Press Start 2P', cursive; }
     
-    .subtitle { color: #aaa; font-weight: 800; font-size: 1.5vw; margin-bottom: 3rem; letter-spacing: 5px; }
+    .subtitle { color: #0ff; font-weight: 800; font-size: 1.5vw; margin-bottom: 3rem; letter-spacing: 5px; text-shadow: 0 0 10px #0ff; }
     .blink { animation: blinker 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes blinker { 50% { opacity: 0.3; } }
 
@@ -90,6 +91,7 @@
     .btn-a { background: var(--xbox-a); }
     .btn-b { background: var(--xbox-b); }
     .btn-x { background: var(--xbox-x); }
+    .btn-y { background: var(--xbox-y); color: #000; }
     .btn-start { 
         background: var(--xbox-start); width: auto; padding: 0 12px; border-radius: 16px; font-size: 12px; border: 1px solid #555;
     }
@@ -233,7 +235,7 @@
     <!-- Main Menu -->
     <div id="screen-menu" class="screen active">
         <a href="https://instagram.com/skyeprobably" target="_blank" class="social-link">@skyeprobably</a>
-        <h1>NEON<br>GRAND PRIX</h1>
+        <h1>NEON<br>GRAND PRIX V2</h1>
         <div class="subtitle">4-PLAYER LOCAL MULTIPLAYER</div>
         
         <div style="margin-top: 4rem; display: flex; align-items: center; font-weight: 800; font-size: 1.5rem;" class="blink">
@@ -252,7 +254,7 @@
             <div style="margin-bottom: 10px;">
                 <span class="btn-prompt btn-a">A</span> <span>JOIN / READY</span> &nbsp;&nbsp;&nbsp; 
                 <span class="btn-prompt btn-b">B</span> <span>LEAVE</span> &nbsp;&nbsp;&nbsp;
-                <span class="btn-prompt btn-y" style="background:#ffd300; color:#000;">Y</span> <span>SPEED CLASS (CC)</span>
+                <span class="btn-prompt btn-y">Y</span> <span>SPEED CLASS (CC)</span>
             </div>
             <div style="margin-bottom: 10px;">
                 <span>◄ / ►</span> <span>CHANGE CAR</span> &nbsp;&nbsp;&nbsp;
@@ -343,6 +345,28 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d', { alpha: false });
     
+    // --- PROCEDURAL TEXTURE GENERATION ---
+    const grassCanvas = document.createElement('canvas');
+    grassCanvas.width = 512; grassCanvas.height = 512;
+    const gCtx = grassCanvas.getContext('2d');
+    gCtx.fillStyle = '#1e4d2a'; gCtx.fillRect(0,0,512,512);
+    for(let i=0; i<1500; i++) {
+        gCtx.fillStyle = Math.random() > 0.5 ? '#184222' : '#255e34';
+        gCtx.fillRect(Math.random()*512, Math.random()*512, 6, 18);
+    }
+    const grassPattern = ctx.createPattern(grassCanvas, 'repeat');
+
+    const dirtCanvas = document.createElement('canvas');
+    dirtCanvas.width = 256; dirtCanvas.height = 256;
+    const dCtx = dirtCanvas.getContext('2d');
+    dCtx.fillStyle = '#4a3018'; dCtx.fillRect(0,0,256,256);
+    for(let i=0; i<1000; i++) {
+        dCtx.fillStyle = Math.random() > 0.5 ? '#3d2511' : '#5c3a21';
+        dCtx.fillRect(Math.random()*256, Math.random()*256, 4, 4);
+    }
+    const dirtPattern = ctx.createPattern(dirtCanvas, 'repeat');
+    // -------------------------------------
+
     let windowWidth, windowHeight;
     function resize() {
         windowWidth = window.innerWidth;
@@ -353,7 +377,6 @@
     window.addEventListener('resize', resize);
     resize();
 
-    /* --- GAME ARCHITECTURE & ADDON SYSTEM --- */
     window.NeonGP = {
         ccMode: 100, 
         specials: [],
@@ -437,14 +460,13 @@
         }
     });
 
-    // Dynamic Addon Loader (Silently attempts loading potential plugins)
     const addonTypes = ['addon', 'powerup'];
     const disabledMods = JSON.parse(localStorage.getItem('NeonGP_disabledMods') || '[]');
     
     addonTypes.forEach(type => {
         for(let i=1; i<=10; i++) {
             const fileName = `${type}${i}.js`;
-            if (disabledMods.includes(fileName)) continue; // Skip loading if disabled in Mod Menu
+            if (disabledMods.includes(fileName)) continue; 
             
             let script = document.createElement('script');
             script.src = `addons/${fileName}`;
@@ -453,7 +475,7 @@
         }
     });
 
-    const PLAYER_COLORS_HEX = ['#e60012', '#00c3e3', '#bbff00', '#ffaa00']; // P1 Red, P2 Blue, P3 Lime, P4 Orange
+    const PLAYER_COLORS_HEX = ['#e60012', '#00c3e3', '#bbff00', '#ffaa00']; 
     const CAR_MODELS = ['F1', 'FERRARI', 'HELLCAT', 'TRACKHAWK'];
     
     const carImageCache = {}; 
@@ -499,34 +521,25 @@
                 <rect x="20" y="15" width="15" height="8" rx="2" fill="#fff"/>
                 <rect x="65" y="15" width="15" height="8" rx="2" fill="#fff"/>
             </svg>`;
-        } else { // Trackhawk (Remodeled with AAA details)
+        } else { // Trackhawk 
             svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
-                <!-- Tires -->
                 <rect x="0" y="25" width="25" height="50" rx="8" fill="#050505"/>
                 <rect x="75" y="25" width="25" height="50" rx="8" fill="#050505"/>
                 <rect x="0" y="125" width="25" height="50" rx="8" fill="#050505"/>
                 <rect x="75" y="125" width="25" height="50" rx="8" fill="#050505"/>
-                <!-- Body -->
                 <rect x="8" y="5" width="84" height="190" rx="18" fill="${colorHex}"/>
-                <!-- Hood Vents -->
                 <rect x="30" y="25" width="40" height="15" rx="3" fill="#111"/>
                 <rect x="35" y="27" width="30" height="3" fill="#333"/>
                 <rect x="35" y="33" width="30" height="3" fill="#333"/>
-                <!-- Front Grille & Headlights -->
                 <rect x="15" y="5" width="70" height="12" rx="4" fill="#111"/>
                 <rect x="18" y="7" width="15" height="8" rx="2" fill="#fff"/>
                 <rect x="67" y="7" width="15" height="8" rx="2" fill="#fff"/>
-                <!-- Windshield -->
                 <path d="M 12 65 L 88 65 L 82 145 L 18 145 Z" fill="#11151c"/>
-                <!-- Roof -->
                 <rect x="22" y="75" width="56" height="60" rx="6" fill="${colorHex}"/>
-                <!-- Panoramic Sunroof -->
                 <rect x="30" y="80" width="40" height="50" rx="4" fill="#0a0a0f"/>
-                <!-- Taillights -->
                 <rect x="12" y="188" width="25" height="7" rx="2" fill="#f00"/>
                 <rect x="63" y="188" width="25" height="7" rx="2" fill="#f00"/>
                 <rect x="37" y="190" width="26" height="5" fill="#500"/>
-                <!-- Rear Spoiler edge -->
                 <rect x="15" y="182" width="70" height="6" rx="2" fill="#111"/>
             </svg>`;
         }
@@ -545,7 +558,6 @@
     let actx;
     let audioInitialized = false;
 
-    // Fainter menu music at 95% volume
     const menuMusic = new Audio('audio/menumusic.mp3');
     menuMusic.loop = true;
     menuMusic.volume = 0.95; 
@@ -565,10 +577,8 @@
 
     function playNextRaceSong() {
         if (songPlaylist.length === 0) {
-            // Re-fill playlist 1-10
             for (let i = 1; i <= 10; i++) songPlaylist.push(i);
             shuffleArray(songPlaylist);
-            // Ensure no back-to-back repeats
             if (songPlaylist[0] === lastPlayedSong && songPlaylist.length > 1) {
                 [songPlaylist[0], songPlaylist[1]] = [songPlaylist[1], songPlaylist[0]];
             }
@@ -760,10 +770,10 @@
     function handleAnyInput() {
         initAudio();
         
-        // Ensure browser goes Fullscreen if allowed
+        // Ensure browser goes Fullscreen if allowed (Critical for TVs)
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => {
-                console.log(`Error attempting to enable fullscreen: ${err.message} (${err.name})`);
+                console.log(`Error attempting to enable fullscreen: ${err.message}`);
             });
         }
         
@@ -780,16 +790,20 @@
     const players = [
         { id: 0, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[0], carModel: 0, 
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} },
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {},
+          lastSpeed: 0, bounceX: 1, bounceY: 1, driftVisualAngle: 0 },
         { id: 1, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[1], carModel: 1,
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} },
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {},
+          lastSpeed: 0, bounceX: 1, bounceY: 1, driftVisualAngle: 0 },
         { id: 2, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[2], carModel: 2,
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} },
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {},
+          lastSpeed: 0, bounceX: 1, bounceY: 1, driftVisualAngle: 0 },
         { id: 3, joined: false, ready: false, inputId: -1, color: PLAYER_COLORS_HEX[3], carModel: 3,
           x:0, y:0, vx:0, vy:0, angle:0, speed:0, checkIdx: 0, lap: 1, finished: false, racePts: 0, totalPts: 0, 
-          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {} }
+          turboProgress: 100, turboActive: false, turboTimer: 0, specialIdx: 0, specialProgress: 100, specialState: {},
+          lastSpeed: 0, bounceX: 1, bounceY: 1, driftVisualAngle: 0 }
     ];
 
     let gameState = {
@@ -805,6 +819,7 @@
     };
 
     let particles = [];
+    let skidmarks = []; // New skidmark array
 
     // Generate Lobby HTML explicitly
     const lobbyContainer = document.querySelector('.lobby-container');
@@ -824,6 +839,124 @@
             </div>
         `;
     });
+
+    /* -------------------------------------------------------------------------- */
+    /* 6. TRACK GENERATION (MASSIVE V2 SCALES)                                    */
+    /* -------------------------------------------------------------------------- */
+    function catmullRom(p0, p1, p2, p3, t) {
+        const t2 = t * t; const t3 = t2 * t;
+        return 0.5 * (
+            (2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+        );
+    }
+
+    function generateTrackSpline(points, resolution) {
+        const spline = [];
+        const len = points.length;
+        for (let i = 0; i < len; i++) {
+            const p0 = points[(i - 1 + len) % len];
+            const p1 = points[i];
+            const p2 = points[(i + 1) % len];
+            const p3 = points[(i + 2) % len];
+            for (let t = 0; t < 1; t += 1/resolution) {
+                spline.push({ x: catmullRom(p0.x, p1.x, p2.x, p3.x, t), y: catmullRom(p0.y, p1.y, p2.y, p3.y, t) });
+            }
+        }
+        for (let i = 0; i < spline.length; i++) {
+            const curr = spline[i], next = spline[(i + 1) % spline.length];
+            const dx = next.x - curr.x, dy = next.y - curr.y, dist = Math.hypot(dx, dy);
+            curr.nx = -dy / dist; curr.ny = dx / dist;
+            curr.dirX = dx / dist; curr.dirY = dy / dist;
+            curr.angle = Math.atan2(dy, dx);
+        }
+        return spline;
+    }
+
+    function populateScenery(spline, trackWidth, themeColor, trackName) {
+        const scenery = [];
+        // Generate lush bushes and trees in the off-road areas
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        spline.forEach(p => {
+            if(p.x < minX) minX = p.x; if(p.x > maxX) maxX = p.x;
+            if(p.y < minY) minY = p.y; if(p.y > maxY) maxY = p.y;
+        });
+        
+        const areaWidth = (maxX - minX) + 10000;
+        const areaHeight = (maxY - minY) + 10000;
+        
+        for(let i=0; i<3000; i++) {
+            let x = minX - 5000 + Math.random() * areaWidth;
+            let y = minY - 5000 + Math.random() * areaHeight;
+            let minDist = Infinity;
+            for(let pt of spline) {
+                let d = Math.hypot(x-pt.x, y-pt.y);
+                if(d < minDist) minDist = d;
+            }
+            if(minDist > trackWidth * 0.6) { 
+                scenery.push({
+                    type: Math.random() > 0.8 ? 'tree' : 'bush',
+                    x: x, y: y,
+                    size: Math.random() * 200 + 100,
+                    color: Math.random() > 0.5 ? '#2b6b3b' : '#1e5631',
+                    angle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        // Only place Banners if the map is the Neon GP Circuit
+        if (trackName === "NEON GP CIRCUIT") {
+            let step = Math.floor(spline.length / 8); 
+            for(let i = step/2; i < spline.length; i += step) {
+                let idx = Math.floor(i);
+                if(idx > 20 && idx < spline.length - 20) {
+                    scenery.push({
+                        type: 'banner', x: spline[idx].x, y: spline[idx].y, 
+                        angle: spline[idx].angle, width: trackWidth + 1000,
+                        text: Math.random() > 0.5 ? '@skyeprobably' : 'NEON GP',
+                        color: themeColor
+                    });
+                }
+            }
+        }
+
+        return scenery;
+    }
+
+    // Huge Complex V2 Tracks perfectly scaled for multiplayer drifting
+    const trackDefs = [
+        { name: "NEON GP CIRCUIT", width: 1400, color: '#00ffff', pts: [{x:-8000,y:-4000}, {x:-2000,y:-4000}, {x:-2000,y:-10000}, {x:6000,y:-10000}, {x:6000,y:-2000}, {x:12000,y:-2000}, {x:12000,y:6000}, {x:0,y:6000}, {x:0,y:10000}, {x:-8000,y:10000}], boosts: [0.15, 0.45, 0.85] },
+        { name: "HUSTLE RACEWAY", width: 1300, color: '#ffaa00', pts: [{x:-9000,y:-3000}, {x:-3000,y:-9000}, {x:5000,y:-9000}, {x:11000,y:-3000}, {x:11000,y:5000}, {x:5000,y:11000}, {x:-3000,y:11000}, {x:-9000,y:5000}, {x:-5000,y:0}], boosts: [0.2, 0.7] },
+        { name: "JDOT CURVE", width: 1500, color: '#ff0055', pts: [{x:-10000,y:-10000}, {x:0,y:-10000}, {x:8000,y:-8000}, {x:12000,y:0}, {x:8000,y:8000}, {x:0,y:10000}, {x:-10000,y:10000}, {x:-12000,y:5000}, {x:-8000,y:0}, {x:-2000,y:3000}, {x:4000,y:0}, {x:4000,y:-5000}, {x:-10000,y:-5000}], boosts: [0.3, 0.8] },
+        { name: "STARLIGHT SPRINT", width: 1300, color: '#ffff00', pts: [{x:0,y:-12000}, {x:3000,y:-4000}, {x:11000,y:-3000}, {x:5000,y:3000}, {x:7000,y:11000}, {x:0,y:6000}, {x:-7000,y:11000}, {x:-5000,y:3000}, {x:-11000,y:-3000}, {x:-3000,y:-4000}], boosts: [0.1, 0.3, 0.5, 0.7, 0.9] },
+        { name: "CYBER PEAKS", width: 1500, color: '#00ff00', pts: [{x:-12000,y:-6000}, {x:-6000,y:-12000}, {x:0,y:-6000}, {x:6000,y:-12000}, {x:12000,y:-6000}, {x:6000,y:0}, {x:12000,y:6000}, {x:6000,y:12000}, {x:0,y:6000}, {x:-6000,y:12000}, {x:-12000,y:6000}, {x:-6000,y:0}], boosts: [0.2, 0.4, 0.6, 0.8] },
+        { name: "DRIFT CASINO", width: 1600, color: '#bb00ff', pts: [{x:-9000,y:-9000}, {x:9000,y:-9000}, {x:12000,y:0}, {x:6000,y:9000}, {x:-6000,y:9000}, {x:-12000,y:0}], boosts: [0.25, 0.75] },
+        { name: "TOXIC PIPELINE", width: 1200, color: '#88ff00', pts: [{x:-15000,y:-3000}, {x:-10000,y:-9000}, {x:10000,y:-9000}, {x:15000,y:-3000}, {x:15000,y:3000}, {x:8000,y:3000}, {x:8000,y:-3000}, {x:0,y:-3000}, {x:0,y:9000}, {x:-10000,y:9000}, {x:-15000,y:3000}], boosts: [0.35, 0.8] },
+        { name: "QUANTUM CORE", width: 1400, color: '#ff0000', pts: [{x:-10000,y:-10000}, {x:0,y:-14000}, {x:10000,y:-10000}, {x:14000,y:0}, {x:10000,y:10000}, {x:5000,y:5000}, {x:5000,y:-5000}, {x:-5000,y:-5000}, {x:-5000,y:5000}, {x:0,y:14000}, {x:-10000,y:10000}, {x:-14000,y:0}], boosts: [0.1, 0.25, 0.4, 0.6, 0.85] }
+    ];
+
+    const CUPS = [
+        { name: "NEON CUP", icon: '🏆', color: '#00ffff', tracks: [0, 1] },
+        { name: "CYBER CUP", icon: '🌐', color: '#00ff00', tracks: [2, 3] },
+        { name: "HYPER CUP", icon: '⚡', color: '#ff0000', tracks: [4, 5] },
+        { name: "MIDNIGHT", icon: '🌙', color: '#bb00ff', tracks: [6, 7] }
+    ];
+
+    let currentTrack = null;
+
+    function buildTrack(def) {
+        const spline = generateTrackSpline(def.pts, 120); 
+        const checkpoints = [];
+        for(let i=0; i<spline.length; i+=25) checkpoints.push(spline[i]);
+        const boostPads = [];
+        if (def.boosts) {
+            def.boosts.forEach(t => {
+                const idx = Math.floor(t * spline.length);
+                if (spline[idx]) boostPads.push(spline[idx]);
+            });
+        }
+        const scenery = populateScenery(spline, def.width, def.color, def.name);
+        return { name: def.name, color: def.color, width: def.width, spline: spline, checkpoints: checkpoints, boostPads: boostPads, scenery: scenery };
+    }
 
     function handleUIEvent(inputId, actionType) {
         initAudio();
@@ -1005,76 +1138,8 @@
     }
 
     /* -------------------------------------------------------------------------- */
-    /* 6. TRACK GENERATION (MASSIVE SCALES)                                       */
-    /* -------------------------------------------------------------------------- */
-    function catmullRom(p0, p1, p2, p3, t) {
-        const t2 = t * t; const t3 = t2 * t;
-        return 0.5 * (
-            (2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3
-        );
-    }
-
-    function generateTrackSpline(points, resolution) {
-        const spline = [];
-        const len = points.length;
-        for (let i = 0; i < len; i++) {
-            const p0 = points[(i - 1 + len) % len];
-            const p1 = points[i];
-            const p2 = points[(i + 1) % len];
-            const p3 = points[(i + 2) % len];
-            for (let t = 0; t < 1; t += 1/resolution) {
-                spline.push({ x: catmullRom(p0.x, p1.x, p2.x, p3.x, t), y: catmullRom(p0.y, p1.y, p2.y, p3.y, t) });
-            }
-        }
-        for (let i = 0; i < spline.length; i++) {
-            const curr = spline[i], next = spline[(i + 1) % spline.length];
-            const dx = next.x - curr.x, dy = next.y - curr.y, dist = Math.hypot(dx, dy);
-            curr.nx = -dy / dist; curr.ny = dx / dist;
-            curr.dirX = dx / dist; curr.dirY = dy / dist;
-            curr.angle = Math.atan2(dy, dx);
-        }
-        return spline;
-    }
-
-    // 8 Huge Tracks scaled perfectly for 85 MPH max speed with Boost Pads
-    const trackDefs = [
-        { name: "NEON OVAL", width: 1400, color: '#e60012', pts: [{x:-6000, y:-3000}, {x:0, y:-3000}, {x:6000, y:-3000}, {x:9000, y:0}, {x:6000, y:3000}, {x:0, y:3000}, {x:-6000, y:3000}, {x:-9000, y:0}], boosts: [0.25, 0.75] },
-        { name: "CYBER BEAN", width: 1200, color: '#00c3e3', pts: [{x:-4500,y:-3600}, {x:3000,y:-4500}, {x:7500,y:0}, {x:3000,y:4500}, {x:-6000,y:3000}, {x:-3000,y:0}], boosts: [0.3, 0.8] },
-        { name: "HYPER STAR", width: 1300, color: '#0f0', pts: [{x:-6000,y:-6000}, {x:0,y:-2400}, {x:6000,y:-6000}, {x:3600,y:0}, {x:7500,y:6000}, {x:0,y:3000}, {x:-7500,y:6000}, {x:-3600,y:0}], boosts: [0.1, 0.4, 0.7] },
-        { name: "DESERT SERPENT", width: 1400, color: '#f09433', pts: [{x:-9000, y:-3000}, {x:-3000, y:-6000}, {x:3000, y:-1500}, {x:9000, y:-6000}, {x:10500, y:1500}, {x:4500, y:6000}, {x:-1500, y:1500}, {x:-7500, y:6000}], boosts: [0.15, 0.65] },
-        { name: "THE OCTAGON", width: 1200, color: '#bc1888', pts: [{x:-4500, y:-7500}, {x:4500, y:-7500}, {x:7500, y:-4500}, {x:7500, y:4500}, {x:4500, y:7500}, {x:-4500, y:7500}, {x:-7500, y:4500}, {x:-7500, y:-4500}], boosts: [0.125, 0.375, 0.625, 0.875] },
-        { name: "CIRCUIT LOOP", width: 1300, color: '#ffaa00', pts: [{x:-6000, y:-3000}, {x:-3000, y:-3000}, {x:-1500, y:-6000}, {x:3000, y:-6000}, {x:6000, y:0}, {x:3000, y:6000}, {x:-4500, y:6000}, {x:-7500, y:1500}], boosts: [0.2, 0.5, 0.8] },
-        { name: "MIDNIGHT RUN", width: 1500, color: '#fff', pts: [{x:-12000, y:-800}, {x:0, y:-800}, {x:12000, y:-800}, {x:14000, y:0}, {x:12000, y:800}, {x:0, y:800}, {x:-12000, y:800}, {x:-14000, y:0}], boosts: [0.1, 0.3, 0.6, 0.8] },
-        { name: "THE COLOSSEUM", width: 1500, color: '#b200ff', pts: [{x:-8000, y:0}, {x:-5600, y:-5600}, {x:0, y:-8000}, {x:5600, y:-5600}, {x:8000, y:0}, {x:5600, y:5600}, {x:0, y:8000}, {x:-5600, y:5600}], boosts: [0.25, 0.75] } 
-    ];
-
-    const CUPS = [
-        { name: "NEON CUP", icon: '🏆', color: '#e60012', tracks: [0, 1] },
-        { name: "CYBER CUP", icon: '🌐', color: '#00c3e3', tracks: [2, 3] },
-        { name: "HYPER CUP", icon: '⚡', color: '#bbff00', tracks: [4, 5] },
-        { name: "MIDNIGHT", icon: '🌙', color: '#b200ff', tracks: [6, 7] }
-    ];
-
-    let currentTrack = null;
-
-    function buildTrack(def) {
-        const spline = generateTrackSpline(def.pts, 100); 
-        const checkpoints = [];
-        for(let i=0; i<spline.length; i+=20) checkpoints.push(spline[i]);
-        const boostPads = [];
-        if (def.boosts) {
-            def.boosts.forEach(t => {
-                const idx = Math.floor(t * spline.length);
-                if (spline[idx]) boostPads.push(spline[idx]);
-            });
-        }
-        return { name: def.name, color: def.color, width: def.width, spline: spline, checkpoints: checkpoints, boostPads: boostPads };
-    }
-
-    /* -------------------------------------------------------------------------- */
     /* 7. PHYSICS & GAME LOOP                                                     */
     /* -------------------------------------------------------------------------- */
-    // Overhauled physics engine for true racing feel at enormous scales.
     const PHYSICS = {
         accel: 0.45, 
         brake: 1.5, 
@@ -1108,12 +1173,19 @@
             p.checkIdx = 0; p.lap = 1; p.finished = false; p.racePts = 0; p.ready = false; 
             p.turboProgress = 100; p.turboActive = false; p.turboTimer = 0;
             p.specialProgress = 100; p.specialState = {};
+            
+            // Animation state reset
+            p.lastSpeed = 0; p.bounceX = 1; p.bounceY = 1; p.driftVisualAngle = 0;
         });
         
         particles = [];
+        skidmarks = [];
         changePhase('race_intro');
         gameState.countdown = 3;
         
+        // Setup initial camera instantly
+        updateCamera(true);
+
         let c = 3;
         const countInt = setInterval(() => {
             if (gameState.phase === 'paused') return; 
@@ -1152,7 +1224,6 @@
                 steer = inp.steer;
             }
 
-            // --- SPECIAL LOGIC ---
             const specialDef = NeonGP.specials[p.specialIdx];
             if (inp.special && p.specialProgress >= specialDef.cost) {
                 p.specialProgress -= specialDef.cost;
@@ -1166,7 +1237,6 @@
             }
             if (specialDef.onUpdate) specialDef.onUpdate(p, activeP);
 
-            // --- TURBO LOGIC ---
             if (inp.turbo && p.turboProgress >= 100) {
                 p.turboActive = true;
                 p.turboTimer = 60; 
@@ -1200,18 +1270,35 @@
                     });
                 }
             }
-
-            // --- DRIFT MECHANIC ---
+            
+            // --- DRIFT MECHANIC & ANIMATIONS ---
             if (inp.drift && Math.abs(p.speed) > 20) {
                 currentTurnSpeed *= 2.0; 
                 currentFriction *= 0.98; 
+                
+                // Visual tilt when drifting
                 if (Math.abs(steer) > 0.1) {
+                    p.driftVisualAngle += (steer * 0.35 - p.driftVisualAngle) * 0.2;
+                    
                     particles.push({
                         x: p.x - Math.cos(p.angle)*90, y: p.y - Math.sin(p.angle)*90,
                         vx: p.vx*0.2 + (Math.random()-0.5)*5, vy: p.vy*0.2 + (Math.random()-0.5)*5, 
                         life: 0.8, color: '#fff', size: Math.random()*20+8
                     });
+
+                    // Lay down skidmarks
+                    let lWx = p.x + Math.cos(p.angle - Math.PI/2)*70 - Math.cos(p.angle)*90;
+                    let lWy = p.y + Math.sin(p.angle - Math.PI/2)*70 - Math.sin(p.angle)*90;
+                    let rWx = p.x + Math.cos(p.angle + Math.PI/2)*70 - Math.cos(p.angle)*90;
+                    let rWy = p.y + Math.sin(p.angle + Math.PI/2)*70 - Math.sin(p.angle)*90;
+                    skidmarks.push({x: lWx, y: lWy, life: 1});
+                    skidmarks.push({x: rWx, y: rWy, life: 1});
+                    if (skidmarks.length > 800) skidmarks.splice(0, 2);
+                } else {
+                    p.driftVisualAngle += (0 - p.driftVisualAngle) * 0.2;
                 }
+            } else {
+                p.driftVisualAngle += (0 - p.driftVisualAngle) * 0.2;
             }
 
             p.speed += acc * (acc > 0 ? currentAccel : PHYSICS.brake);
@@ -1221,11 +1308,23 @@
                 p.angle += steer * currentTurnSpeed * turnMod;
             }
 
+            // Squash and Stretch fluid animations based on acceleration
+            let rawAccel = p.speed - p.lastSpeed;
+            p.lastSpeed = p.speed;
+            
+            // target scales - elongates when accelerating fast, squishes when braking (Subdued)
+            let targetScaleY = 1 + (Math.abs(p.speed) / currentMaxSpeed) * 0.02 + (rawAccel > 0 ? rawAccel * 0.02 : 0);
+            let targetScaleX = 1 - (Math.abs(p.speed) / currentMaxSpeed) * 0.01 - (rawAccel > 0 ? rawAccel * 0.01 : 0);
+            
+            // Lerp scales for bounciness
+            p.bounceX += (targetScaleX - p.bounceX) * 0.3;
+            p.bounceY += (targetScaleY - p.bounceY) * 0.3;
+
             p.vx = Math.cos(p.angle) * p.speed;
             p.vy = Math.sin(p.angle) * p.speed;
             p.x += p.vx; p.y += p.vy;
 
-            // Boost Pads Check
+            // Boost Pads
             currentTrack.boostPads.forEach(pad => {
                 const distToCenter = Math.hypot(p.x - pad.x, p.y - pad.y);
                 if (distToCenter < currentTrack.width / 2) {
@@ -1236,12 +1335,14 @@
                         if (p.speed > currentMaxSpeed * 1.8) p.speed = currentMaxSpeed * 1.8;
                         p.turboActive = true; 
                         p.turboTimer = Math.max(p.turboTimer, 25);
+                        p.bounceY += 0.3; // Intense visual pop
+                        p.bounceX -= 0.1;
                         if (Math.random() > 0.5) playSound('blip');
                     }
                 }
             });
 
-            // Track Surface Check (Sand vs Asphalt)
+            // Surface Checks
             let minDist = Infinity;
             for(let i=0; i<currentTrack.spline.length; i+=2) { 
                 const pt = currentTrack.spline[i];
@@ -1260,7 +1361,7 @@
                 if (Math.abs(p.speed) > 10) {
                     particles.push({
                         x: p.x, y: p.y, vx: -p.vx*0.3 + (Math.random()-0.5)*8, vy: -p.vy*0.3 + (Math.random()-0.5)*8,
-                        life: 1, color: '#7a5a32', size: Math.random()*15+5 // Dark Sand
+                        life: 1, color: '#131e13', size: Math.random()*15+5 
                     });
                 }
             } else {
@@ -1268,7 +1369,7 @@
                  if (Math.abs(p.speed) > 10) {
                     particles.push({
                         x: p.x, y: p.y, vx: -p.vx*0.3 + (Math.random()-0.5)*8, vy: -p.vy*0.3 + (Math.random()-0.5)*8,
-                        life: 1, color: '#1a1a1a', size: Math.random()*12+5
+                        life: 1, color: '#091509', size: Math.random()*12+5
                     });
                 }
             }
@@ -1276,7 +1377,6 @@
             if (p.speed > currentMaxSpeed) p.speed = currentMaxSpeed;
             if (p.speed < -currentMaxSpeed/2) p.speed = -currentMaxSpeed/2;
 
-            // Checkpoints
             const checks = currentTrack.checkpoints;
             const nextCheckIdx = (p.checkIdx + 1) % checks.length;
             const targetCheck = checks[nextCheckIdx];
@@ -1289,13 +1389,13 @@
             }
         });
         
-        // Collisions (Sparks)
+        // Collisions 
         for(let i=0; i<activeP.length; i++) {
             for(let j=i+1; j<activeP.length; j++) {
                 const p1 = activeP[i]; const p2 = activeP[j];
                 const dx = p2.x - p1.x; const dy = p2.y - p1.y;
                 const dist = Math.hypot(dx, dy);
-                const r = 160; // Increased radius for massively scaled cars
+                const r = 160; 
                 if (dist < r*2) {
                     const overlap = (r*2 - dist)/2;
                     const nx = dx/dist; const ny = dy/dist;
@@ -1305,6 +1405,7 @@
                     const relSpeed = Math.abs(p1.speed - p2.speed);
                     if (relSpeed > 15) {
                         playSound('crash');
+                        p1.bounceX += 0.2; p2.bounceX += 0.2; // Visual bump
                         for(let k=0; k<15; k++) {
                             particles.push({
                                 x: p1.x + nx*r, y: p1.y + ny*r,
@@ -1325,6 +1426,11 @@
             particles[i].x += particles[i].vx; particles[i].y += particles[i].vy;
             if (particles[i].life <= 0) particles.splice(i, 1);
         }
+        
+        for(let i=0; i<skidmarks.length; i++) {
+            skidmarks[i].life -= 0.002;
+        }
+        skidmarks = skidmarks.filter(s => s.life > 0);
 
         const leader = getLeader();
         if(leader) document.getElementById('hud-laps').innerText = `LAP ${Math.min(leader.lap, MAX_LAPS)}/${MAX_LAPS}`;
@@ -1352,28 +1458,49 @@
         }
     }
 
-    function updateCamera() {
+    function updateCamera(instant = false) {
         const targets = players.filter(p => p.joined && (!p.finished || gameState.finishers === players.filter(x=>x.joined).length));
         if (targets.length === 0) return;
 
-        let ax = 0, ay = 0;
-        targets.forEach(p => { ax += p.x; ay += p.y; });
-        ax /= targets.length; ay /= targets.length;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        targets.forEach(p => {
+            if(p.x < minX) minX = p.x;
+            if(p.x > maxX) maxX = p.x;
+            if(p.y < minY) minY = p.y;
+            if(p.y > maxY) maxY = p.y;
+        });
 
-        gameState.camera.x += (ax - gameState.camera.x) * 0.1;
-        gameState.camera.y += (ay - gameState.camera.y) * 0.1;
+        let centerX = (minX + maxX) / 2;
+        let centerY = (minY + maxY) / 2;
 
-        let maxDist = 0;
-        for(let i=0; i<targets.length; i++) {
-            for(let j=i+1; j<targets.length; j++) {
-                const d = Math.hypot(targets[i].x - targets[j].x, targets[i].y - targets[j].y);
-                if (d > maxDist) maxDist = d;
-            }
+        let avgVx = 0, avgVy = 0;
+        targets.forEach(p => { avgVx += p.vx; avgVy += p.vy; });
+        avgVx /= targets.length; avgVy /= targets.length;
+        centerX += avgVx * 25;
+        centerY += avgVy * 25;
+
+        if (instant) {
+            gameState.camera.x = centerX;
+            gameState.camera.y = centerY;
+        } else {
+            gameState.camera.x += (centerX - gameState.camera.x) * 0.1;
+            gameState.camera.y += (centerY - gameState.camera.y) * 0.1;
         }
+
+        let boxWidth = Math.max(1500, maxX - minX);
+        let boxHeight = Math.max(1500, maxY - minY);
         
-        // Scaled enormously for the giant new maps
-        const targetScale = Math.max(0.04, Math.min(0.8, 1600 / (maxDist + 1800)));
-        gameState.camera.scale += (targetScale - gameState.camera.scale) * 0.05;
+        let scaleX = windowWidth / (boxWidth + 3000); 
+        let scaleY = windowHeight / (boxHeight + 3000);
+        
+        let targetScale = Math.min(scaleX, scaleY);
+        targetScale = Math.max(0.04, Math.min(0.65, targetScale));
+
+        if (instant) {
+            gameState.camera.scale = targetScale;
+        } else {
+            gameState.camera.scale += (targetScale - gameState.camera.scale) * 0.05;
+        }
     }
 
     /* -------------------------------------------------------------------------- */
@@ -1383,7 +1510,7 @@
         ctx.save();
         ctx.translate(p.x, p.y);
         
-        // Huge scale rendering to match physical spacing updates
+        // Player UI (P1 Indicator, MPH, Boost Bar)
         ctx.beginPath();
         ctx.arc(0, 0, 160, 0, Math.PI*2);
         ctx.strokeStyle = p.color; ctx.lineWidth = 12;
@@ -1393,36 +1520,32 @@
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowBlur = 0;
         ctx.fillText(`P${p.id+1}`, 0, -320);
 
-        // MPH mapped exactly to display speed classes properly
         const displaySpeed = Math.floor(Math.abs(p.speed) * 3.8); 
         ctx.fillStyle = '#fff'; ctx.font = '35px "Press Start 2P"';
         ctx.fillText(`${displaySpeed} MPH`, 0, -250);
 
-        // Turbo UI (Top Bar)
         ctx.fillStyle = '#222'; ctx.fillRect(-120, -190, 240, 20);
         ctx.fillStyle = p.turboActive ? '#0ff' : (p.turboProgress >= 100 ? '#0f0' : '#f00');
         ctx.fillRect(-120, -190, (p.turboProgress / 100) * 240, 20);
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.strokeRect(-120, -190, 240, 20);
 
-        // Special UI (Bottom Bar)
         const specDef = NeonGP.specials[p.specialIdx];
         ctx.fillStyle = '#222'; ctx.fillRect(-120, -165, 240, 16);
-        
         let barColor = specDef.color;
         if (p.specialState.active || p.specialState.dualNitroActive) barColor = '#fff'; 
-        
         ctx.fillStyle = barColor;
         ctx.fillRect(-120, -165, (p.specialProgress / 100) * 240, 16);
-        
         if (specDef.cost === 50) {
             ctx.fillStyle = '#fff'; ctx.fillRect(-1, -165, 3, 16); 
         }
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(-120, -165, 240, 16);
 
+        // Core visual transformation applying physics fluidity
         ctx.rotate(p.angle + Math.PI / 2);
-
-        let speedPercent = Math.abs(p.speed) / (PHYSICS.maxSpeed * (NeonGP.ccMode / 100));
-        ctx.scale(1 - speedPercent*0.05, 1 + speedPercent*0.1);
+        
+        // Fluid Animations applied (Bounce, Stretch, Drift Tilt)
+        ctx.rotate(p.driftVisualAngle);
+        ctx.scale(p.bounceX, p.bounceY);
 
         const img = getCarSVG(p.carModel, p.color);
         if (img && img.complete) {
@@ -1431,8 +1554,79 @@
         }
         ctx.restore();
 
-        // Overlay Special visual representation
         if (specDef.onDraw) specDef.onDraw(ctx, p, players.filter(x=>x.joined));
+    }
+
+    function drawScenery(scenery) {
+        // Frustum Culling calculation to ensure 60fps
+        const pad = 2000; // Extra padding to render items just off-screen before they pop in
+        const camLeft = gameState.camera.x - (windowWidth/2) / gameState.camera.scale - pad;
+        const camRight = gameState.camera.x + (windowWidth/2) / gameState.camera.scale + pad;
+        const camTop = gameState.camera.y - (windowHeight/2) / gameState.camera.scale - pad;
+        const camBottom = gameState.camera.y + (windowHeight/2) / gameState.camera.scale + pad;
+
+        scenery.forEach(s => {
+            if (s.x < camLeft || s.x > camRight || s.y < camTop || s.y > camBottom) return;
+
+            ctx.save();
+            ctx.translate(s.x, s.y);
+            
+            if (s.type === 'bush') {
+                ctx.rotate(s.angle);
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, s.size/2, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.arc(-s.size/6, -s.size/6, s.size/4, 0, Math.PI*2);
+                ctx.fill();
+            } else if (s.type === 'tree') {
+                ctx.rotate(s.angle);
+                // Trunk
+                ctx.fillStyle = '#4a3018';
+                ctx.fillRect(-s.size*0.1, 0, s.size*0.2, s.size*0.5);
+                // Canopy
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, s.size*0.6, 0, Math.PI*2);
+                ctx.fill();
+                // Shading
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.arc(-s.size*0.2, s.size*0.1, s.size*0.4, 0, Math.PI*2);
+                ctx.fill();
+            } else if (s.type === 'banner') {
+                // Procedural Archway over the track
+                ctx.rotate(s.angle + Math.PI/2);
+                
+                // Pillars
+                ctx.fillStyle = '#111';
+                ctx.strokeStyle = s.color;
+                ctx.lineWidth = 10;
+                ctx.shadowBlur = 30; ctx.shadowColor = s.color;
+                
+                const pW = 100;
+                ctx.fillRect(-s.width/2 - pW, -150, pW, 300);
+                ctx.strokeRect(-s.width/2 - pW, -150, pW, 300);
+                
+                ctx.fillRect(s.width/2, -150, pW, 300);
+                ctx.strokeRect(s.width/2, -150, pW, 300);
+                
+                // Top Banner Bridge
+                ctx.fillRect(-s.width/2, -50, s.width, 100);
+                ctx.strokeRect(-s.width/2, -50, s.width, 100);
+                
+                // Text
+                ctx.fillStyle = '#fff';
+                ctx.font = '900 120px "Montserrat"';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.shadowBlur = 50; ctx.shadowColor = s.color;
+                ctx.fillText(s.text, 0, 0);
+            }
+            
+            ctx.restore();
+        });
     }
 
     function drawTrack() {
@@ -1440,17 +1634,17 @@
         const spline = currentTrack.spline;
         const w = currentTrack.width;
 
-        // Visual Sand Area (Huge off-road boundaries)
+        // Visual Dirt Area (under the neon track boundaries)
         ctx.beginPath(); ctx.moveTo(spline[0].x, spline[0].y);
         for(let i=1; i<spline.length; i++) ctx.lineTo(spline[i].x, spline[i].y);
         ctx.closePath();
         ctx.lineWidth = w + 1200; 
-        ctx.strokeStyle = '#3d2511'; // Highly visible dark sand contrasting with neon
+        ctx.strokeStyle = dirtPattern || '#3d2511'; 
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.stroke();
 
         // Asphalt Track
-        ctx.lineWidth = w; ctx.strokeStyle = '#1a1a1f'; ctx.stroke();
+        ctx.lineWidth = w; ctx.strokeStyle = '#08080a'; ctx.stroke();
 
         // Rumble Strips
         ctx.lineWidth = 40; ctx.save();
@@ -1467,6 +1661,14 @@
         ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 100; ctx.stroke();
         ctx.restore();
 
+        // Skidmarks rendered onto track
+        skidmarks.forEach(s => {
+            ctx.globalAlpha = s.life;
+            ctx.fillStyle = '#000';
+            ctx.beginPath(); ctx.arc(s.x, s.y, 25, 0, Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
+
         // Neon Bounds
         ctx.lineWidth = 15; ctx.strokeStyle = currentTrack.color;
         ctx.shadowBlur = 40; ctx.shadowColor = currentTrack.color;
@@ -1479,16 +1681,13 @@
         ctx.closePath(); ctx.stroke();
         ctx.shadowBlur = 0;
         
-        // --- STYLIZED LANES & BOOST PADS ---
+        // Stylized Lanes
         ctx.lineWidth = 6;
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.setLineDash([100, 100]);
-        // draw center line
         ctx.beginPath();
         for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x, spline[i].y);
         ctx.stroke();
-        
-        // draw quarter lines
         ctx.beginPath();
         for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x + spline[i].nx * w/4, spline[i].y + spline[i].ny * w/4);
         ctx.stroke();
@@ -1502,32 +1701,52 @@
             ctx.save();
             ctx.translate(pad.x, pad.y);
             ctx.rotate(pad.angle);
-            
             ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
             ctx.shadowBlur = 30; ctx.shadowColor = '#0ff';
-            ctx.fillRect(-60, -w/2, 120, w); // glowing strip
-            
+            ctx.fillRect(-60, -w/2, 120, w); 
             ctx.fillStyle = '#fff';
             ctx.shadowBlur = 40; ctx.shadowColor = '#fff';
-            // draw chevron arrows across the track width
             for(let offset = -w/2 + 150; offset < w/2; offset += 300) {
-                ctx.beginPath();
-                ctx.moveTo(-30, offset - 50);
-                ctx.lineTo(30, offset);
-                ctx.lineTo(-30, offset + 50);
-                ctx.lineTo(-50, offset + 50);
-                ctx.lineTo(10, offset);
-                ctx.lineTo(-50, offset - 50);
-                ctx.fill();
+                ctx.beginPath(); ctx.moveTo(-30, offset - 50); ctx.lineTo(30, offset); ctx.lineTo(-30, offset + 50);
+                ctx.lineTo(-50, offset + 50); ctx.lineTo(10, offset); ctx.lineTo(-50, offset - 50); ctx.fill();
             }
             ctx.restore();
         });
 
-        // Start Line Checkered
+        // 2.0 Detailed Finish Line (Holographic Laser Grid)
         const p0 = currentTrack.checkpoints[0]; const p1 = currentTrack.checkpoints[1];
-        ctx.save(); ctx.translate(p0.x, p0.y); ctx.rotate(Math.atan2(p1.y-p0.y, p1.x-p0.x));
+        ctx.save(); 
+        ctx.translate(p0.x, p0.y); 
+        ctx.rotate(Math.atan2(p1.y-p0.y, p1.x-p0.x));
+        
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.fillRect(0, -w/2, 200, w);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(0, -w/2, 200, w);
+        
+        // Ground Text
         ctx.fillStyle = '#fff';
-        for(let i = -w/2; i < w/2; i+=60) { ctx.fillRect(0, i, 30, 30); ctx.fillRect(30, i+30, 30, 30); }
+        ctx.font = '900 120px "Montserrat"';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText("START / FINISH", 100, 0);
+
+        // Laser Pillars
+        const renderPillar = (offsetY) => {
+            ctx.save(); ctx.translate(100, offsetY);
+            ctx.fillStyle = '#111'; ctx.strokeStyle = currentTrack.color; ctx.lineWidth = 15;
+            ctx.shadowBlur = 50; ctx.shadowColor = currentTrack.color;
+            ctx.beginPath(); ctx.arc(0, 0, 60, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.restore();
+        };
+        renderPillar(-w/2 - 100);
+        renderPillar(w/2 + 100);
+
+        // Holographic Laser line across
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.setLineDash([20, 20]);
+        ctx.beginPath(); ctx.moveTo(100, -w/2 - 100); ctx.lineTo(100, w/2 + 100); ctx.stroke();
+        
         ctx.restore();
     }
 
@@ -1541,15 +1760,19 @@
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('hud').classList.remove('active');
         document.getElementById('race-msg').style.display = 'none';
+        
+        const cssGrid = document.getElementById('bg-grid');
 
         if (newPhase === 'menu') {
             document.getElementById('screen-menu').classList.add('active');
             document.getElementById('cc-display').classList.remove('active');
+            cssGrid.classList.remove('hidden');
         } 
         else if (newPhase === 'lobby') {
             document.getElementById('screen-lobby').classList.add('active');
             document.getElementById('lobby-start-msg').style.display = 'none';
             document.getElementById('cc-display').classList.add('active');
+            cssGrid.classList.remove('hidden');
             players.forEach(p => { p.joined=false; p.ready=false; p.carModel=p.id; p.specialIdx=0; }); 
             updateLobbyUI();
         }
@@ -1557,6 +1780,7 @@
             document.getElementById('screen-cup').classList.add('active');
             document.getElementById('cc-display').classList.add('active');
             gameState.cupSelection = 0;
+            cssGrid.classList.remove('hidden');
             updateCupUI();
         }
         else if (newPhase === 'race_intro') {
@@ -1566,27 +1790,33 @@
             document.getElementById('hud-track-name').style.color = currentTrack.color;
             document.getElementById('hud-laps').innerText = `LAP 1/${MAX_LAPS}`;
             document.getElementById('race-msg').style.display = 'block';
+            cssGrid.classList.add('hidden'); 
         }
         else if (newPhase === 'racing') {
             document.getElementById('hud').classList.add('active');
+            cssGrid.classList.add('hidden');
         }
         else if (newPhase === 'paused') {
             document.getElementById('hud').classList.add('active');
             document.getElementById('screen-pause').classList.add('active');
             gameState.pauseSelection = 0;
+            cssGrid.classList.add('hidden');
             updatePauseMenuUI();
         }
         else if (newPhase === 'standings') {
             document.getElementById('screen-standings').classList.add('active');
+            cssGrid.classList.remove('hidden');
             players.forEach(p => p.ready = false); 
             populateTable('standings-table', false);
         }
         else if (newPhase === 'podium') {
             document.getElementById('screen-podium').classList.add('active');
+            cssGrid.classList.remove('hidden');
             buildVisualPodium();
         }
         else if (newPhase === 'leaderboard') {
             document.getElementById('screen-leaderboard').classList.add('active');
+            cssGrid.classList.remove('hidden');
             buildLeaderboard();
         }
     }
@@ -1670,9 +1900,6 @@
         requestAnimationFrame(loop);
         pollInput();
         
-        ctx.fillStyle = '#0f0f13'; 
-        ctx.fillRect(0, 0, windowWidth, windowHeight);
-
         if (['race_intro', 'racing', 'paused'].includes(gameState.phase)) {
             updatePhysics();
 
@@ -1681,9 +1908,22 @@
             ctx.scale(gameState.camera.scale, gameState.camera.scale);
             ctx.translate(-gameState.camera.x, -gameState.camera.y);
 
+            // Draw the moving grass background over the exact visible camera area.
+            // Rendering it inside the camera transform forces the pattern to pan with the world.
+            const pad = 200;
+            const viewLeft = gameState.camera.x - (windowWidth / 2) / gameState.camera.scale - pad;
+            const viewTop = gameState.camera.y - (windowHeight / 2) / gameState.camera.scale - pad;
+            const viewW = (windowWidth / gameState.camera.scale) + (pad * 2);
+            const viewH = (windowHeight / gameState.camera.scale) + (pad * 2);
+            
+            ctx.fillStyle = grassPattern || '#1a4d2e';
+            ctx.fillRect(viewLeft, viewTop, viewW, viewH);
+
+            // Draw V2 Scenery and Details
+            drawScenery(currentTrack.scenery);
             drawTrack();
             
-            // Draw Magnet Lightning Lines before cars to overlap correctly
+            // Draw Magnet Lightning Lines
             players.forEach(p => {
                 if (p.joined && p.specialState.active && p.specialState.target !== null && NeonGP.specials[p.specialIdx].id === 'magnet') {
                     const target = players.find(x => x.id === p.specialState.target);
@@ -1746,6 +1986,11 @@
                 ctx.fillRect(0, 0, windowWidth, windowHeight);
             }
         } else {
+            // Clear screen for menu to prevent trailing
+            ctx.fillStyle = '#0f0f13';
+            ctx.fillRect(0, 0, windowWidth, windowHeight);
+
+            // Menu Background Loop Animation
             ctx.save();
             ctx.translate(windowWidth/2, windowHeight/2);
             ctx.rotate(Date.now() * 0.0002);
