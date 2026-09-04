@@ -1,0 +1,45 @@
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
+
+  - name: Setup Java
+    uses: actions/setup-java@v4
+    with:
+      distribution: 'zulu'
+      java-version: '17'
+
+  - name: Prepare Game Files
+    run: |
+      mkdir www
+      # Move all game files into a web directory for the wrapper
+      rsync -av --exclude='www' --exclude='.git' --exclude='.github' ./ www/
+
+  - name: Install Capacitor & Android Support
+    run: |
+      npm init -y
+      npm install @capacitor/core @capacitor/cli @capacitor/android
+      npx cap init "Neon Grand Prix" "com.skyeprobably.neongp" --web-dir "www"
+      npx cap add android
+
+  - name: Inject Android TV (Leanback) Flags
+    run: |
+      cd android/app/src/main
+      
+      # 1. Tell Android this is a TV app and doesn't need a touchscreen
+      sed -i 's/<application/<uses-feature android:name="android.software.leanback" android:required="true" \/>\n    <uses-feature android:name="android.hardware.touchscreen" android:required="false" \/>\n    <application/g' AndroidManifest.xml
+      
+      # 2. Make the app show up on the Android TV Dashboard
+      sed -i 's/<category android:name="android.intent.category.LAUNCHER" \/>/<category android:name="android.intent.category.LAUNCHER" \/>\n                <category android:name="android.intent.category.LEANBACK_LAUNCHER" \/>/g' AndroidManifest.xml
+
+  - name: Compile the APK
+    run: |
+      cd android
+      chmod +x gradlew
+      ./gradlew assembleDebug
+
+  - name: Upload APK for Download
+    uses: actions/upload-artifact@v4
+    with:
+      name: Neon-Grand-Prix-AndroidTV
+      path: android/app/build/outputs/apk/debug/app-debug.apk
