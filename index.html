@@ -557,6 +557,7 @@
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let actx;
     let audioInitialized = false;
+    let engineNodes = [];
 
     const menuMusic = new Audio('audio/menumusic.mp3');
     menuMusic.loop = true;
@@ -608,12 +609,141 @@
         }
     }
 
+    function initEngineAudio() {
+        if (!actx || engineNodes.length > 0) return;
+        for(let i=0; i<4; i++) {
+            // Use multiple oscillators for a thicker, more complex sound
+            const osc1 = actx.createOscillator(); // Sub frequency for bass
+            const osc2 = actx.createOscillator(); // Main frequency
+            const osc3 = actx.createOscillator(); // High harmonic for raspy texture
+            
+            // Create a noise node for mechanical grit/rumble
+            const bufferSize = actx.sampleRate * 2; // 2 seconds of noise
+            const noiseBuffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let j = 0; j < bufferSize; j++) {
+                output[j] = Math.random() * 2 - 1;
+            }
+            const noiseSource = actx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+
+            const noiseFilter = actx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.value = 150; // Keep only low rumble initially
+
+            const noiseGain = actx.createGain();
+            noiseGain.gain.value = 0;
+
+            const mainFilter = actx.createBiquadFilter();
+            const distNode = actx.createWaveShaper(); // Distortion for the "roar"
+            const masterGain = actx.createGain();
+            
+            // Basic sawtooth for the main engine tones
+            osc1.type = 'sawtooth';
+            osc2.type = 'sawtooth';
+            osc3.type = 'square'; // Square adds more aggressive harmonics
+            
+            // Initial frequencies (idle state)
+            osc1.frequency.value = 30; // Sub
+            osc2.frequency.value = 60; // Main
+            osc3.frequency.value = 120; // High harmonic
+            
+            // Filter setup - sweeping lowpass gives the 'revving' feel
+            mainFilter.type = 'lowpass';
+            mainFilter.frequency.value = 300; 
+            mainFilter.Q.value = 5; // Adds resonance/bite to the filter
+            
+            // Distortion curve setup
+            function makeDistortionCurve(amount) {
+                const k = typeof amount === 'number' ? amount : 50;
+                const n_samples = 44100;
+                const curve = new Float32Array(n_samples);
+                const deg = Math.PI / 180;
+                for (let i = 0; i < n_samples; ++i) {
+                    const x = i * 2 / n_samples - 1;
+                    curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+                }
+                return curve;
+            }
+            distNode.curve = makeDistortionCurve(400); // Heavy distortion
+            distNode.oversample = '4x';
+            
+            masterGain.gain.value = 0; // Muted initially
+            
+            // Routing
+            osc1.connect(mainFilter);
+            osc2.connect(mainFilter);
+            osc3.connect(mainFilter);
+            
+            noiseSource.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(mainFilter);
+
+            mainFilter.connect(distNode);
+            distNode.connect(masterGain);
+            masterGain.connect(actx.destination);
+            
+            osc1.start();
+            osc2.start();
+            osc3.start();
+            noiseSource.start();
+            
+            engineNodes.push({ osc1, osc2, osc3, mainFilter, noiseFilter, noiseGain, masterGain });
+        }
+    }
+
+    function updateEngineAudio(activePlayers) {
+        if (!actx || engineNodes.length === 0) return;
+        
+        if (['racing', 'race_intro'].includes(gameState.phase)) {
+            activePlayers.forEach(p => {
+                const node = engineNodes[p.id];
+                if (p.finished) {
+                    node.masterGain.gain.setTargetAtTime(0, actx.currentTime, 0.5);
+                    return;
+                }
+                const speedRatio = Math.abs(p.speed) / (PHYSICS.maxSpeed * (NeonGP.ccMode / 100));
+                
+                // Pitch calculations
+                const baseFreq = 40 + (speedRatio * 120) + (p.turboActive ? 50 : 0);
+                
+                // RPM "gear shift" simulation (causes pitch to drop slightly at higher speeds to sound like shifting)
+                const rpmWobble = Math.sin(speedRatio * Math.PI * 6) * 10 * speedRatio; 
+                const targetFreq = baseFreq + rpmWobble;
+
+                // Modulate oscillators
+                node.osc1.frequency.setTargetAtTime(targetFreq * 0.5, actx.currentTime, 0.05); // Sub octave
+                node.osc2.frequency.setTargetAtTime(targetFreq, actx.currentTime, 0.05);       // Main
+                node.osc3.frequency.setTargetAtTime(targetFreq * 1.5, actx.currentTime, 0.05); // Harmonic (fifths)
+
+                // Modulate filter to open up as speed increases (creates the "roar")
+                const filterFreq = 300 + (speedRatio * 3000) + (p.turboActive ? 2000 : 0);
+                node.mainFilter.frequency.setTargetAtTime(filterFreq, actx.currentTime, 0.05);
+                node.mainFilter.Q.setTargetAtTime(5 + (speedRatio * 10), actx.currentTime, 0.1); // More resonance at high speed
+                
+                // Mix in more noise/rumble at higher speeds
+                node.noiseFilter.frequency.setTargetAtTime(150 + (speedRatio * 800), actx.currentTime, 0.1);
+                node.noiseGain.gain.setTargetAtTime(0.5 + (speedRatio * 1.5), actx.currentTime, 0.1);
+
+                // Volume mixing
+                const targetVol = 0.02 + (speedRatio * 0.08); // Keep overall mix reasonable due to distortion
+                node.masterGain.gain.setTargetAtTime(targetVol, actx.currentTime, 0.05);
+            });
+        } else {
+            engineNodes.forEach(node => node.masterGain.gain.setTargetAtTime(0, actx.currentTime, 0.2));
+        }
+    }
+
     function initAudio() {
         if (!audioInitialized) {
             audioInitialized = true;
             handleMusicState(gameState.phase);
         }
-        if (!actx) actx = new AudioContext();
+        if (!actx) {
+            actx = new AudioContext();
+            initEngineAudio();
+        }
         if (actx.state === 'suspended') actx.resume();
     }
 
@@ -658,14 +788,48 @@
             gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             noise.start(now);
         } else if (type === 'lap') {
-            osc.type = 'sine';
-            [523.25, 659.25, 783.99].forEach((f, i) => { 
-                const o = actx.createOscillator(); const g = actx.createGain();
-                o.type = 'square'; o.frequency.value = f; o.connect(g); g.connect(actx.destination);
-                g.gain.setValueAtTime(0, now + i*0.1); g.gain.linearRampToValueAtTime(0.05, now + i*0.1 + 0.05);
-                g.gain.exponentialRampToValueAtTime(0.001, now + i*0.1 + 0.3);
-                o.start(now + i*0.1); o.stop(now + i*0.1 + 0.3);
+            // Classic arcade lap chime: A rapid arpeggio
+            const freqs = [440, 554.37, 659.25, 880]; // A4, C#5, E5, A5 (A Major arpeggio)
+            
+            freqs.forEach((f, i) => {
+                const o = actx.createOscillator(); 
+                const g = actx.createGain();
+                
+                // Use square for a chiptune feel, mixed with sine for smoothness
+                o.type = 'square'; 
+                o.frequency.value = f; 
+                
+                o.connect(g); 
+                g.connect(actx.destination);
+                
+                const startTime = now + (i * 0.08); // Fast sequence
+                const duration = 0.15;
+                
+                g.gain.setValueAtTime(0, startTime); 
+                // Quick attack, quick release
+                g.gain.linearRampToValueAtTime(0.1, startTime + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                
+                o.start(startTime); 
+                o.stop(startTime + duration);
             });
+
+            // Add a triumphant high note at the end
+            const oHigh = actx.createOscillator();
+            const gHigh = actx.createGain();
+            oHigh.type = 'sine';
+            oHigh.frequency.value = 1108.73; // C#6
+            oHigh.connect(gHigh);
+            gHigh.connect(actx.destination);
+            
+            const highStart = now + (freqs.length * 0.08);
+            gHigh.gain.setValueAtTime(0, highStart);
+            gHigh.gain.linearRampToValueAtTime(0.1, highStart + 0.02);
+            gHigh.gain.exponentialRampToValueAtTime(0.001, highStart + 0.4);
+            
+            oHigh.start(highStart);
+            oHigh.stop(highStart + 0.4);
+
         }
     }
 
@@ -924,14 +1088,14 @@
 
     // Huge Complex V2 Tracks perfectly scaled for multiplayer drifting
     const trackDefs = [
-        { name: "NEON GP CIRCUIT", width: 1400, color: '#00ffff', pts: [{x:-8000,y:-4000}, {x:-2000,y:-4000}, {x:-2000,y:-10000}, {x:6000,y:-10000}, {x:6000,y:-2000}, {x:12000,y:-2000}, {x:12000,y:6000}, {x:0,y:6000}, {x:0,y:10000}, {x:-8000,y:10000}], boosts: [0.15, 0.45, 0.85] },
-        { name: "HUSTLE RACEWAY", width: 1300, color: '#ffaa00', pts: [{x:-9000,y:-3000}, {x:-3000,y:-9000}, {x:5000,y:-9000}, {x:11000,y:-3000}, {x:11000,y:5000}, {x:5000,y:11000}, {x:-3000,y:11000}, {x:-9000,y:5000}, {x:-5000,y:0}], boosts: [0.2, 0.7] },
-        { name: "JDOT CURVE", width: 1500, color: '#ff0055', pts: [{x:-10000,y:-10000}, {x:0,y:-10000}, {x:8000,y:-8000}, {x:12000,y:0}, {x:8000,y:8000}, {x:0,y:10000}, {x:-10000,y:10000}, {x:-12000,y:5000}, {x:-8000,y:0}, {x:-2000,y:3000}, {x:4000,y:0}, {x:4000,y:-5000}, {x:-10000,y:-5000}], boosts: [0.3, 0.8] },
-        { name: "STARLIGHT SPRINT", width: 1300, color: '#ffff00', pts: [{x:0,y:-12000}, {x:3000,y:-4000}, {x:11000,y:-3000}, {x:5000,y:3000}, {x:7000,y:11000}, {x:0,y:6000}, {x:-7000,y:11000}, {x:-5000,y:3000}, {x:-11000,y:-3000}, {x:-3000,y:-4000}], boosts: [0.1, 0.3, 0.5, 0.7, 0.9] },
-        { name: "CYBER PEAKS", width: 1500, color: '#00ff00', pts: [{x:-12000,y:-6000}, {x:-6000,y:-12000}, {x:0,y:-6000}, {x:6000,y:-12000}, {x:12000,y:-6000}, {x:6000,y:0}, {x:12000,y:6000}, {x:6000,y:12000}, {x:0,y:6000}, {x:-6000,y:12000}, {x:-12000,y:6000}, {x:-6000,y:0}], boosts: [0.2, 0.4, 0.6, 0.8] },
-        { name: "DRIFT CASINO", width: 1600, color: '#bb00ff', pts: [{x:-9000,y:-9000}, {x:9000,y:-9000}, {x:12000,y:0}, {x:6000,y:9000}, {x:-6000,y:9000}, {x:-12000,y:0}], boosts: [0.25, 0.75] },
-        { name: "TOXIC PIPELINE", width: 1200, color: '#88ff00', pts: [{x:-15000,y:-3000}, {x:-10000,y:-9000}, {x:10000,y:-9000}, {x:15000,y:-3000}, {x:15000,y:3000}, {x:8000,y:3000}, {x:8000,y:-3000}, {x:0,y:-3000}, {x:0,y:9000}, {x:-10000,y:9000}, {x:-15000,y:3000}], boosts: [0.35, 0.8] },
-        { name: "QUANTUM CORE", width: 1400, color: '#ff0000', pts: [{x:-10000,y:-10000}, {x:0,y:-14000}, {x:10000,y:-10000}, {x:14000,y:0}, {x:10000,y:10000}, {x:5000,y:5000}, {x:5000,y:-5000}, {x:-5000,y:-5000}, {x:-5000,y:5000}, {x:0,y:14000}, {x:-10000,y:10000}, {x:-14000,y:0}], boosts: [0.1, 0.25, 0.4, 0.6, 0.85] }
+        { name: "NEON GP CIRCUIT", width: 1400, color: '#00ffff', pts: [{x:-8000,y:-4000}, {x:-2000,y:-4000}, {x:-2000,y:-10000}, {x:6000,y:-10000}, {x:6000,y:-2000}, {x:12000,y:-2000}, {x:12000,y:6000}, {x:0,y:6000}, {x:0,y:10000}, {x:-8000,y:10000}], boosts: [0.15, 0.35, 0.45, 0.65, 0.85, 0.95] },
+        { name: "HUSTLE RACEWAY", width: 1300, color: '#ffaa00', pts: [{x:-9000,y:-3000}, {x:-3000,y:-9000}, {x:5000,y:-9000}, {x:11000,y:-3000}, {x:11000,y:5000}, {x:5000,y:11000}, {x:-3000,y:11000}, {x:-9000,y:5000}, {x:-5000,y:0}], boosts: [0.1, 0.2, 0.4, 0.6, 0.7, 0.9] },
+        { name: "JDOT CURVE", width: 1500, color: '#ff0055', pts: [{x:-10000,y:-10000}, {x:0,y:-10000}, {x:8000,y:-8000}, {x:12000,y:0}, {x:8000,y:8000}, {x:0,y:10000}, {x:-10000,y:10000}, {x:-12000,y:5000}, {x:-8000,y:0}, {x:-2000,y:3000}, {x:4000,y:0}, {x:4000,y:-5000}, {x:-10000,y:-5000}], boosts: [0.15, 0.3, 0.45, 0.6, 0.8, 0.9] },
+        { name: "STARLIGHT SPRINT", width: 1300, color: '#ffff00', pts: [{x:0,y:-12000}, {x:3000,y:-4000}, {x:11000,y:-3000}, {x:5000,y:3000}, {x:7000,y:11000}, {x:0,y:6000}, {x:-7000,y:11000}, {x:-5000,y:3000}, {x:-11000,y:-3000}, {x:-3000,y:-4000}], boosts: [0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9] },
+        { name: "CYBER PEAKS", width: 1500, color: '#00ff00', pts: [{x:-12000,y:-6000}, {x:-6000,y:-12000}, {x:0,y:-6000}, {x:6000,y:-12000}, {x:12000,y:-6000}, {x:6000,y:0}, {x:12000,y:6000}, {x:6000,y:12000}, {x:0,y:6000}, {x:-6000,y:12000}, {x:-12000,y:6000}, {x:-6000,y:0}], boosts: [0.1, 0.2, 0.4, 0.5, 0.6, 0.8, 0.9] },
+        { name: "DRIFT CASINO", width: 1600, color: '#bb00ff', pts: [{x:-9000,y:-9000}, {x:9000,y:-9000}, {x:12000,y:0}, {x:6000,y:9000}, {x:-6000,y:9000}, {x:-12000,y:0}], boosts: [0.15, 0.25, 0.4, 0.6, 0.75, 0.9] },
+        { name: "TOXIC PIPELINE", width: 1200, color: '#88ff00', pts: [{x:-15000,y:-3000}, {x:-10000,y:-9000}, {x:10000,y:-9000}, {x:15000,y:-3000}, {x:15000,y:3000}, {x:8000,y:3000}, {x:8000,y:-3000}, {x:0,y:-3000}, {x:0,y:9000}, {x:-10000,y:9000}, {x:-15000,y:3000}], boosts: [0.1, 0.25, 0.35, 0.5, 0.7, 0.8, 0.9] },
+        { name: "QUANTUM CORE", width: 1400, color: '#ff0000', pts: [{x:-10000,y:-10000}, {x:0,y:-14000}, {x:10000,y:-10000}, {x:14000,y:0}, {x:10000,y:10000}, {x:5000,y:5000}, {x:5000,y:-5000}, {x:-5000,y:-5000}, {x:-5000,y:5000}, {x:0,y:14000}, {x:-10000,y:10000}, {x:-14000,y:0}], boosts: [0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.85, 0.95] }
     ];
 
     const CUPS = [
@@ -955,7 +1119,30 @@
             });
         }
         const scenery = populateScenery(spline, def.width, def.color, def.name);
-        return { name: def.name, color: def.color, width: def.width, spline: spline, checkpoints: checkpoints, boostPads: boostPads, scenery: scenery };
+        
+        const paths = {
+            dirt: new Path2D(), asphalt: new Path2D(),
+            rumble1: new Path2D(), rumble2: new Path2D(),
+            neonOuter: new Path2D(), neonInner: new Path2D(),
+            lane1: new Path2D(), lane2: new Path2D(), lane3: new Path2D()
+        };
+        const w = def.width;
+        
+        spline.forEach((pt, i) => {
+            if(i===0) paths.dirt.moveTo(pt.x, pt.y); else paths.dirt.lineTo(pt.x, pt.y);
+            if(i===0) paths.asphalt.moveTo(pt.x, pt.y); else paths.asphalt.lineTo(pt.x, pt.y);
+            if(i===0) paths.rumble1.moveTo(pt.x + pt.nx * (w/2 + 5), pt.y + pt.ny * (w/2 + 5)); else paths.rumble1.lineTo(pt.x + pt.nx * (w/2 + 5), pt.y + pt.ny * (w/2 + 5));
+            if(i===0) paths.rumble2.moveTo(pt.x - pt.nx * (w/2 + 5), pt.y - pt.ny * (w/2 + 5)); else paths.rumble2.lineTo(pt.x - pt.nx * (w/2 + 5), pt.y - pt.ny * (w/2 + 5));
+            if(i===0) paths.neonOuter.moveTo(pt.x + pt.nx * w/2, pt.y + pt.ny * w/2); else paths.neonOuter.lineTo(pt.x + pt.nx * w/2, pt.y + pt.ny * w/2);
+            if(i===0) paths.neonInner.moveTo(pt.x - pt.nx * w/2, pt.y - pt.ny * w/2); else paths.neonInner.lineTo(pt.x - pt.nx * w/2, pt.y - pt.ny * w/2);
+            if(i===0) paths.lane1.moveTo(pt.x, pt.y); else paths.lane1.lineTo(pt.x, pt.y);
+            if(i===0) paths.lane2.moveTo(pt.x + pt.nx * w/4, pt.y + pt.ny * w/4); else paths.lane2.lineTo(pt.x + pt.nx * w/4, pt.y + pt.ny * w/4);
+            if(i===0) paths.lane3.moveTo(pt.x - pt.nx * w/4, pt.y - pt.ny * w/4); else paths.lane3.lineTo(pt.x - pt.nx * w/4, pt.y - pt.ny * w/4);
+        });
+        
+        paths.dirt.closePath(); paths.neonOuter.closePath(); paths.neonInner.closePath(); paths.rumble1.closePath(); paths.rumble2.closePath();
+        
+        return { name: def.name, color: def.color, width: def.width, spline: spline, checkpoints: checkpoints, boostPads: boostPads, scenery: scenery, paths: paths };
     }
 
     function handleUIEvent(inputId, actionType) {
@@ -1293,7 +1480,7 @@
                     let rWy = p.y + Math.sin(p.angle + Math.PI/2)*70 - Math.sin(p.angle)*90;
                     skidmarks.push({x: lWx, y: lWy, life: 1});
                     skidmarks.push({x: rWx, y: rWy, life: 1});
-                    if (skidmarks.length > 800) skidmarks.splice(0, 2);
+                    if (skidmarks.length > 400) skidmarks.splice(0, 2); // Optimized limit
                 } else {
                     p.driftVisualAngle += (0 - p.driftVisualAngle) * 0.2;
                 }
@@ -1631,69 +1818,56 @@
 
     function drawTrack() {
         if (!currentTrack) return;
-        const spline = currentTrack.spline;
         const w = currentTrack.width;
+        const paths = currentTrack.paths;
 
         // Visual Dirt Area (under the neon track boundaries)
-        ctx.beginPath(); ctx.moveTo(spline[0].x, spline[0].y);
-        for(let i=1; i<spline.length; i++) ctx.lineTo(spline[i].x, spline[i].y);
-        ctx.closePath();
         ctx.lineWidth = w + 1200; 
         ctx.strokeStyle = dirtPattern || '#3d2511'; 
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.stroke();
+        ctx.stroke(paths.dirt);
 
         // Asphalt Track
-        ctx.lineWidth = w; ctx.strokeStyle = '#08080a'; ctx.stroke();
+        ctx.lineWidth = w; ctx.strokeStyle = '#08080a'; ctx.stroke(paths.asphalt);
 
         // Rumble Strips
         ctx.lineWidth = 40; ctx.save();
-        ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x + spline[i].nx * (w/2 + 5), spline[i].y + spline[i].ny * (w/2 + 5));
-        ctx.closePath();
-        ctx.strokeStyle = '#ff0000'; ctx.setLineDash([100, 100]); ctx.stroke();
-        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 100; ctx.stroke();
-
-        ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x - spline[i].nx * (w/2 + 5), spline[i].y - spline[i].ny * (w/2 + 5));
-        ctx.closePath();
-        ctx.strokeStyle = '#ff0000'; ctx.lineDashOffset = 0; ctx.stroke();
-        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 100; ctx.stroke();
+        ctx.strokeStyle = '#ff0000'; ctx.setLineDash([100, 100]); ctx.stroke(paths.rumble1);
+        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 100; ctx.stroke(paths.rumble1);
+        ctx.strokeStyle = '#ff0000'; ctx.lineDashOffset = 0; ctx.stroke(paths.rumble2);
+        ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = 100; ctx.stroke(paths.rumble2);
         ctx.restore();
 
-        // Skidmarks rendered onto track
+        // Skidmarks rendered onto track (Optimized with Culling)
+        const pad = 2000;
+        const camLeft = gameState.camera.x - (windowWidth/2) / gameState.camera.scale - pad;
+        const camRight = gameState.camera.x + (windowWidth/2) / gameState.camera.scale + pad;
+        const camTop = gameState.camera.y - (windowHeight/2) / gameState.camera.scale - pad;
+        const camBottom = gameState.camera.y + (windowHeight/2) / gameState.camera.scale + pad;
+
         skidmarks.forEach(s => {
-            ctx.globalAlpha = s.life;
-            ctx.fillStyle = '#000';
-            ctx.beginPath(); ctx.arc(s.x, s.y, 25, 0, Math.PI*2); ctx.fill();
+            if (s.x > camLeft && s.x < camRight && s.y > camTop && s.y < camBottom) {
+                ctx.globalAlpha = s.life;
+                ctx.fillStyle = '#000';
+                ctx.beginPath(); ctx.arc(s.x, s.y, 25, 0, Math.PI*2); ctx.fill();
+            }
         });
         ctx.globalAlpha = 1.0;
 
         // Neon Bounds
         ctx.lineWidth = 15; ctx.strokeStyle = currentTrack.color;
         ctx.shadowBlur = 40; ctx.shadowColor = currentTrack.color;
-        ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x + spline[i].nx * w/2, spline[i].y + spline[i].ny * w/2);
-        ctx.closePath(); ctx.stroke();
-
-        ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x - spline[i].nx * w/2, spline[i].y - spline[i].ny * w/2);
-        ctx.closePath(); ctx.stroke();
+        ctx.stroke(paths.neonOuter);
+        ctx.stroke(paths.neonInner);
         ctx.shadowBlur = 0;
         
         // Stylized Lanes
         ctx.lineWidth = 6;
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         ctx.setLineDash([100, 100]);
-        ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x, spline[i].y);
-        ctx.stroke();
-        ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x + spline[i].nx * w/4, spline[i].y + spline[i].ny * w/4);
-        ctx.stroke();
-        ctx.beginPath();
-        for(let i=0; i<spline.length; i++) ctx[i===0?'moveTo':'lineTo'](spline[i].x - spline[i].nx * w/4, spline[i].y - spline[i].ny * w/4);
-        ctx.stroke();
+        ctx.stroke(paths.lane1);
+        ctx.stroke(paths.lane2);
+        ctx.stroke(paths.lane3);
         ctx.setLineDash([]);
         
         // Draw Boost Pads
@@ -1902,6 +2076,8 @@
         
         if (['race_intro', 'racing', 'paused'].includes(gameState.phase)) {
             updatePhysics();
+
+            updateEngineAudio(players.filter(p => p.joined));
 
             ctx.save();
             ctx.translate(windowWidth / 2, windowHeight / 2);
