@@ -22,7 +22,7 @@ window.NeonGP.registerSpecial({
         
         // Log the current lap and set the timer for 15 seconds (900 frames at 60fps)
         p.specialState.neonData.lastLapUsed = p.lap;
-        p.specialState.neonData.timer = 900; 
+        p.specialState.neonData.timer = 600; 
         
         // Trigger the music
         const neonAudio = new Audio('/audio/neonpower.mp3');
