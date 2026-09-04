@@ -744,6 +744,15 @@
     function handleAnyInput() {
         initAudio();
         if (gameState.phase === 'menu') {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.warn("Fullscreen denied:", err));
+            } else if (elem.webkitRequestFullscreen) { /* Safari & older TV browsers */
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { /* IE Edge */
+                elem.msRequestFullscreen();
+            }
+
             playSound('blip');
             changePhase('lobby');
         }
