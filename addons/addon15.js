@@ -1,0 +1,140 @@
+// addons/addon10.js - Vehicle Expansion Pack 3
+// Adds the Tron-inspired Neon Runner, Time Machine, Lowrider, and Apocalypse Buggy.
+
+const tronSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+    <rect x="15" y="25" width="10" height="40" rx="3" fill="#000"/>
+    <rect x="75" y="25" width="10" height="40" rx="3" fill="#000"/>
+    <rect x="15" y="140" width="10" height="40" rx="3" fill="#000"/>
+    <rect x="75" y="140" width="10" height="40" rx="3" fill="#000"/>
+    <!-- Sleek OLED Black Body -->
+    <path d="M 25 20 Q 50 10 75 20 L 85 100 L 75 180 Q 50 190 25 180 L 15 100 Z" fill="#0a0a0c"/>
+    <!-- Subtle Neon Glow Lines -->
+    <path d="M 30 25 L 30 175 M 70 25 L 70 175 M 40 15 L 50 5 L 60 15 M 50 5 L 50 185" stroke="VAR_COLOR" stroke-width="2" fill="none" opacity="0.8"/>
+    <circle cx="50" cy="100" r="15" stroke="VAR_COLOR" stroke-width="2" fill="#000" opacity="0.9"/>
+    <circle cx="50" cy="100" r="8" fill="VAR_COLOR" opacity="0.5"/>
+</svg>`;
+
+const deloreanSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+    <rect x="10" y="30" width="14" height="35" rx="2" fill="#111"/>
+    <rect x="76" y="30" width="14" height="35" rx="2" fill="#111"/>
+    <rect x="10" y="140" width="14" height="35" rx="2" fill="#111"/>
+    <rect x="76" y="140" width="14" height="35" rx="2" fill="#111"/>
+    <!-- Blocky Stainless Steel Body -->
+    <path d="M 22 25 L 78 25 L 85 185 L 15 185 Z" fill="#b0b5b9"/>
+    <!-- Front Bumper & Headlights -->
+    <rect x="18" y="20" width="64" height="8" fill="#333"/>
+    <rect x="22" y="22" width="12" height="4" fill="#fff"/>
+    <rect x="66" y="22" width="12" height="4" fill="#fff"/>
+    <!-- Windshield & Roof -->
+    <path d="M 25 75 L 75 75 L 70 115 L 30 115 Z" fill="#151e29"/>
+    <rect x="28" y="115" width="44" height="30" fill="#b0b5b9"/>
+    <!-- Rear Vents / Time Machine Equipment -->
+    <rect x="25" y="145" width="50" height="35" fill="#222"/>
+    <path d="M 30 150 L 70 150 M 30 155 L 70 155 M 30 160 L 70 160 M 30 165 L 70 165" stroke="#777" stroke-width="2"/>
+    <!-- Flux Bands -->
+    <path d="M 15 130 L 25 145 L 75 145 L 85 130" stroke="#4bc4e6" stroke-width="2" fill="none" opacity="0.8"/>
+</svg>`;
+
+const lowriderSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+    <!-- Whitewall Wire Wheels -->
+    <rect x="10" y="25" width="12" height="40" rx="6" fill="#111" stroke="#fff" stroke-width="2"/>
+    <rect x="78" y="25" width="12" height="40" rx="6" fill="#111" stroke="#fff" stroke-width="2"/>
+    <rect x="10" y="140" width="12" height="40" rx="6" fill="#111" stroke="#fff" stroke-width="2"/>
+    <rect x="78" y="140" width="12" height="40" rx="6" fill="#111" stroke="#fff" stroke-width="2"/>
+    <!-- Long Boat-like Body -->
+    <path d="M 18 15 Q 50 10 82 15 L 85 190 Q 50 195 15 190 Z" fill="VAR_COLOR"/>
+    <!-- Chrome Bumpers -->
+    <path d="M 16 13 Q 50 8 84 13" stroke="#e0e0e0" stroke-width="4" fill="none"/>
+    <path d="M 13 192 Q 50 197 87 192" stroke="#e0e0e0" stroke-width="4" fill="none"/>
+    <!-- Roof and Cab -->
+    <path d="M 22 75 Q 50 70 78 75 L 74 130 Q 50 135 26 130 Z" fill="#fff" opacity="0.9"/>
+    <!-- Custom Pinstriping -->
+    <path d="M 25 20 Q 50 40 75 20 M 25 185 Q 50 165 75 185" stroke="#ffd700" stroke-width="1.5" fill="none"/>
+</svg>`;
+
+const buggySVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 200">
+    <!-- Giant Chunky Off-road Tires -->
+    <rect x="5" y="20" width="22" height="45" rx="5" fill="#1a1a1a" stroke="#000" stroke-width="2" stroke-dasharray="4 2"/>
+    <rect x="73" y="20" width="22" height="45" rx="5" fill="#1a1a1a" stroke="#000" stroke-width="2" stroke-dasharray="4 2"/>
+    <rect x="5" y="135" width="22" height="45" rx="5" fill="#1a1a1a" stroke="#000" stroke-width="2" stroke-dasharray="4 2"/>
+    <rect x="73" y="135" width="22" height="45" rx="5" fill="#1a1a1a" stroke="#000" stroke-width="2" stroke-dasharray="4 2"/>
+    <!-- Rusted Chassis Base -->
+    <path d="M 25 15 L 75 15 L 70 185 L 30 185 Z" fill="#5c4033"/>
+    <!-- Exposed Roll Cage -->
+    <path d="M 30 30 L 70 30 L 65 140 L 35 140 Z" stroke="#888" stroke-width="4" fill="none"/>
+    <path d="M 30 30 L 65 140 M 70 30 L 35 140" stroke="#888" stroke-width="3" fill="none"/>
+    <!-- Armor Plates and Spikes -->
+    <rect x="35" y="15" width="30" height="15" fill="#444"/>
+    <path d="M 15 90 L 25 85 L 25 95 Z M 85 90 L 75 85 L 75 95 Z" fill="#999"/>
+    <path d="M 20 180 L 30 195 L 40 180 M 60 180 L 70 195 L 80 180" fill="#777"/>
+    <!-- Driver Seat -->
+    <circle cx="50" cy="100" r="12" fill="VAR_COLOR"/>
+</svg>`;
+
+setTimeout(() => {
+    // Inject our custom SVGs securely using the established system bounds
+    if (typeof getCarSVG === 'function') {
+        const originalGetCar = getCarSVG;
+        window.getCarSVG = function(modelIdx, colorHex) {
+            if (modelIdx === 6) return createAddonCarSVG(tronSVG, colorHex, '6');
+            if (modelIdx === 7) return createAddonCarSVG(deloreanSVG, colorHex, '7');
+            if (modelIdx === 8) return createAddonCarSVG(lowriderSVG, colorHex, '8');
+            if (modelIdx === 9) return createAddonCarSVG(buggySVG, colorHex, '9');
+            return originalGetCar(modelIdx, colorHex);
+        }
+    }
+    
+    const addonCarCache = {};
+    function createAddonCarSVG(svgTpl, color, id) {
+        const key = `${id}_${color}`;
+        if (addonCarCache[key]) return addonCarCache[key];
+        const finalSVG = svgTpl.replace(/VAR_COLOR/g, color);
+        const img = new Image();
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(finalSVG);
+        addonCarCache[key] = img;
+        return img;
+    }
+
+    // Expand the Car Selection bounds from 6 up to 10
+    if (typeof handleUIEvent === 'function') {
+        const originalUI = handleUIEvent;
+        window.handleUIEvent = function(inputId, actionType) {
+            const p = players.find(x => x.inputId === inputId);
+            
+            if (gameState.phase === 'lobby' && p && !p.ready) {
+                if (actionType === 'left') { 
+                    p.carModel = (p.carModel + 9) % 10; 
+                    if(typeof playSound==='function') playSound('blip'); 
+                    if(typeof updateLobbyUI === 'function') updateLobbyUI();
+                    return; 
+                }
+                if (actionType === 'right') { 
+                    p.carModel = (p.carModel + 1) % 10; 
+                    if(typeof playSound==='function') playSound('blip'); 
+                    if(typeof updateLobbyUI === 'function') updateLobbyUI();
+                    return;
+                }
+            }
+            
+            originalUI(inputId, actionType);
+        }
+    }
+    
+    // Update lobby naming plates
+    if (typeof updateLobbyUI === 'function') {
+        const origLobby = updateLobbyUI;
+        window.updateLobbyUI = function() {
+            origLobby();
+            players.forEach((p, i) => {
+                const name = document.getElementById(`name-slot-${i}`);
+                if (name && p.joined) {
+                    if (p.carModel === 6) name.innerText = 'NEON RUNNER';
+                    if (p.carModel === 7) name.innerText = 'TIME MACHINE';
+                    if (p.carModel === 8) name.innerText = 'LOWRIDER';
+                    if (p.carModel === 9) name.innerText = 'APOC BUGGY';
+                }
+            });
+        }
+        if (gameState && gameState.phase === 'lobby') window.updateLobbyUI();
+    }
+}, 1200);
