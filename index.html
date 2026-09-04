@@ -253,7 +253,7 @@
         <div class="controls-box">
             <div style="margin-bottom: 10px;">
                 <span class="btn-prompt btn-a">A</span> <span>JOIN / READY</span> &nbsp;&nbsp;&nbsp; 
-                <span class="btn-prompt btn-b">B</span> <span>LEAVE</span> &nbsp;&nbsp;&nbsp;
+                <span class="btn-prompt btn-b">B</span> <span>LEAVE / BACK</span> &nbsp;&nbsp;&nbsp;
                 <span class="btn-prompt btn-y">Y</span> <span>SPEED CLASS (CC)</span>
             </div>
             <div style="margin-bottom: 10px;">
@@ -333,7 +333,7 @@
             <tr><th>RANK</th><th>NAME</th><th>SCORE</th></tr>
         </table>
         <div style="margin-top: 2rem; display: flex; align-items: center; font-weight: 800; font-size: 1.5rem;">
-            PRESS <span class="btn-prompt btn-b">B</span> TO RETURN TO MENU
+            PRESS <span class="btn-prompt btn-b">B</span> TO RETURN TO VEHICLE SELECT
         </div>
     </div>
 </div>
@@ -460,7 +460,25 @@
         }
     });
 
-    // We no longer load addons dynamically, we hardcode the logic to fix the mod conflict issues.
+    // --- ADDON LOADER ---
+    const addonTypes = ['addon', 'powerup'];
+    const disabledMods = JSON.parse(localStorage.getItem('NeonGP_disabledMods') || '[]');
+    
+    addonTypes.forEach(type => {
+        for(let i=1; i<=10; i++) {
+            const fileName = `${type}${i}.js`;
+            if (disabledMods.includes(fileName)) continue; 
+            
+            // Skip addon9 and addon10 as their vehicles are now integrated into the core game to resolve conflicts.
+            if (fileName === 'addon9.js' || fileName === 'addon10.js') continue;
+            
+            let script = document.createElement('script');
+            script.src = `addons/${fileName}`;
+            script.onerror = function() { this.remove(); };
+            document.head.appendChild(script);
+        }
+    });
+    // --------------------
     
     const PLAYER_COLORS_HEX = ['#e60012', '#00c3e3', '#bbff00', '#ffaa00']; 
     const CAR_MODELS = ['NISSAN SKYLINE', 'FERRARI', 'HELLCAT', 'TRACKHAWK', 'DODGE CHARGER', 'MAZDA MIATA', 'FORD MUSTANG', 'CHEVY CORVETTE', 'NEON RUNNER', 'DELUXO', 'LOWRIDER', 'APOC BUGGY'];
@@ -1621,6 +1639,13 @@
                         playSound('blip'); updateLobbyUI();
                     }
                 }
+                if (actionType === 'cancel') {
+                    const anyJoined = players.some(pl => pl.joined);
+                    if (!anyJoined) {
+                        playSound('blip');
+                        changePhase('menu');
+                    }
+                }
             }
         } 
         else if (gameState.phase === 'cup_select') {
@@ -1690,7 +1715,7 @@
         }
         else if (gameState.phase === 'leaderboard') {
             if ((inputId === 0 || inputId === 2) && (actionType === 'cancel' || actionType === 'action')) {
-                changePhase('menu');
+                changePhase('lobby');
             }
         }
     }
