@@ -92,8 +92,8 @@ window.NeonGP.registerSpecial({
 
             // Add exactly 10% speed bypassing the normal engine clamp by translating positional coordinates
             // We multiply by the absolute speed so the boost only applies when moving
-            p.x += Math.cos(p.angle) * (Math.abs(p.speed) * 0.10);
-            p.y += Math.sin(p.angle) * (Math.abs(p.speed) * 0.10);
+            p.x += Math.cos(p.angle) * (Math.abs(p.speed) * 0.15);
+            p.y += Math.sin(p.angle) * (Math.abs(p.speed) * 0.15);
 
             // Persistent Boost Smoke tied dynamically to current shifting color
             if (typeof particles !== 'undefined') {
