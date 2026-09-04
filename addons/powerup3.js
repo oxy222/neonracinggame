@@ -21,7 +21,7 @@ window.NeonGP.registerSpecial({
     onUse: function(p, activePlayers) {
         // Activate the power state and set the 6-second timer (360 frames @ 60fps)
         p.specialState.neonActive = true;
-        p.specialState.neonTimer = 300; 
+        p.specialState.neonTimer = 240; 
         
         // Save their original lobby color so we can revert them later
         if (!p.specialState.originalColor) {
