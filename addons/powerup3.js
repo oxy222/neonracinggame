@@ -21,7 +21,7 @@ window.NeonGP.registerSpecial({
     onUse: function(p, activePlayers) {
         // Activate the power state and set the 6-second timer (360 frames @ 60fps)
         p.specialState.neonActive = true;
-        p.specialState.neonTimer = 240; 
+        p.specialState.neonTimer = 300; 
         
         // Save their original lobby color so we can revert them later
         if (!p.specialState.originalColor) {
@@ -92,8 +92,8 @@ window.NeonGP.registerSpecial({
 
             // Add exactly 10% speed bypassing the normal engine clamp by translating positional coordinates
             // We multiply by the absolute speed so the boost only applies when moving
-            p.x += Math.cos(p.angle) * (Math.abs(p.speed) * 0.12);
-            p.y += Math.sin(p.angle) * (Math.abs(p.speed) * 0.12);
+            p.x += Math.cos(p.angle) * (Math.abs(p.speed) * 0.13);
+            p.y += Math.sin(p.angle) * (Math.abs(p.speed) * 0.13);
 
             // Persistent Boost Smoke tied dynamically to current shifting color
             if (typeof particles !== 'undefined') {
